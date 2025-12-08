@@ -1,0 +1,163 @@
+[project]
+name = "python-ember-mug"
+readme = "README.md"
+description = "Python Library for Ember Mugs."
+authors = [{ name = "Jesse Sopel", email = "jesse@sopelj.ca" }]
+license = "MIT"
+requires-python = ">=3.11"
+dynamic = ["version"]
+classifiers = [
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: MIT License',
+    'Natural Language :: English',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+]
+dependencies = [
+    "bleak-retry-connector>=4.0.2",
+    "bleak>=1.0.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.2.1", "pytest-cov", "pytest-asyncio"]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-include-markdown-plugin>=7.0.0,<8.0.0",
+    "mkdocs-material>=9.5.44,<10.0.0",
+    "mkdocs-material-extensions",
+    "mkdocstrings-python>=1.12.0",
+    "mkdocs-autorefs",
+    "mkdocs-literate-nav",
+    "mkdocs-gen-files",
+    "black",
+    "termynal",
+]
+dev = ["ipython"]
+
+[project.urls]
+"Changelog" = "https://sopelj.github.io/python-ember-mug/changelog/"
+"Documentation" = "https://sopelj.github.io/python-ember-mug/"
+"Source code" = "https://github.com/sopelj/python-ember-mug/"
+"Bug Tracker" = "https://github.com/sopelj/python-ember-mug/issues"
+
+[project.scripts]
+ember-mug = "ember_mug.cli:run_cli"
+
+[tool.hatch]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "ember_mug/__init__.py"
+
+[tool.hatch.build]
+exclude = ["/docs", "/tests"]
+
+[tool.hatch.build.targets.sdist]
+packages = ["ember_mug"]
+exclude = [".gitignore"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ember_mug"]
+exclude = [".gitignore"]
+
+[tool.hatch.envs.default]
+python = "3.13"
+
+[tool.hatch.envs.test]
+features = ["test"]
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.11", "3.12", "3.13"]
+
+[tool.hatch.envs.test.scripts]
+cov = "pytest -vvv --asyncio-mode=auto --cov=ember_mug --cov-branch --cov-report=xml --cov-report=term-missing tests"
+no-cov = "cov --no-cov"
+
+[tool.hatch.envs.docs]
+python = "3.13"
+features = ["docs"]
+
+[tool.hatch.envs.docs.scripts]
+build = "mkdocs build --clean --strict"
+serve = "mkdocs serve --dev-addr localhost:8000"
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
+target-version = ["py311", "py312", "py313"]
+include = '\.pyi?$'
+exclude = '''
+/(
+  \.git
+  | \.mypy_cache
+  | \.ruff_cache
+  | env
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "def main",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+]
+
+[tool.ruff]
+fix = true
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "ASYNC",
+    "B",
+    "COM",
+    "C4",
+    "D",
+    "E",
+    "ERA",
+    "F",
+    "FA",
+    "FLY",
+    "G",
+    "I",
+    "N",
+    "PTH",
+    "PT",
+    "PL",
+    "PLE",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SLF",
+    "SIM",
+    "TD",
+    "TCH",
+    "UP",
+]
+ignore = ["D203", "D212", "PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "D103",   # No docstrings in tests needed
+    "S101",   # We needs asserts in tests
+    "SLF001",
+]
