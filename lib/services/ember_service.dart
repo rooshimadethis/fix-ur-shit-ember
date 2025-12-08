@@ -11,6 +11,11 @@ class EmberService extends ChangeNotifier {
   BluetoothCharacteristic? _ledChar;
   // ignore: unused_field
   BluetoothCharacteristic? _pushEventChar;
+  BluetoothCharacteristic? _mugIdChar;
+  BluetoothCharacteristic? _dskChar;
+  BluetoothCharacteristic? _udskChar;
+  BluetoothCharacteristic? _firmwareChar;
+  BluetoothCharacteristic? _batteryChar;
 
   bool _isScanning = false;
   bool get isScanning => _isScanning;
@@ -96,6 +101,15 @@ class EmberService extends ChangeNotifier {
       debugPrint("EmberService: Connected!");
       _connectedDevice = device;
       
+      // Attempt to pair (match Python implementation)
+      try {
+        debugPrint("EmberService: Attempting to pair...");
+        await device.createBond();
+        debugPrint("EmberService: Pairing successful or already paired");
+      } catch (e) {
+        debugPrint("EmberService: Pairing failed (might be okay if already paired): $e");
+      }
+      
       // Listen to connection state
       _connectionSubscription = device.connectionState.listen((state) {
         debugPrint("EmberService: Connection state changed to: $state");
@@ -162,6 +176,21 @@ class EmberService extends ChangeNotifier {
         } else if (charUuidStr == EmberConstants.pushEventCharUuid.toLowerCase()) {
           debugPrint("EmberService: Found Push Event Char (notifications)");
           _pushEventChar = characteristic;
+        } else if (charUuidStr == EmberConstants.mugIdCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found Mug ID Char");
+          _mugIdChar = characteristic;
+        } else if (charUuidStr == EmberConstants.dskCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found DSK Char");
+          _dskChar = characteristic;
+        } else if (charUuidStr == EmberConstants.udskCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found UDSK Char");
+          _udskChar = characteristic;
+        } else if (charUuidStr == EmberConstants.firmwareCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found Firmware Char");
+          _firmwareChar = characteristic;
+        } else if (charUuidStr == EmberConstants.batteryCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found Battery Char");
+          _batteryChar = characteristic;
         } else {
           debugPrint("EmberService: Skipping unknown Ember characteristic: ${characteristic.uuid}");
         }
@@ -178,6 +207,9 @@ class EmberService extends ChangeNotifier {
     if (_currentTempChar != null) {
       await _readCurrentTemp();
     }
+
+    // Read initial attributes (like Python's update_initial)
+    await _readInitialAttrs();
   }
 
   Future<void> _setupNotifications(BluetoothCharacteristic characteristic) async {
@@ -254,6 +286,39 @@ class EmberService extends ChangeNotifier {
       debugPrint("Error setting target temp: $e");
     }
   }
+
+  Future<void> _readInitialAttrs() async {
+    // Wait for connection to settle
+    debugPrint("EmberService: Waiting for connection to settle...");
+    await Future.delayed(const Duration(seconds: 2));
+    debugPrint("EmberService: Reading initial attributes...");
+    
+    // Helper function to read with delay and error handling and retry
+    Future<void> safeRead(BluetoothCharacteristic? char, String name) async {
+      if (char == null) return;
+      int maxRetries = 3;
+      for (int i = 0; i < maxRetries; i++) {
+        try {
+          await Future.delayed(const Duration(milliseconds: 1000)); // 1s delay between reads
+          await char.read(); 
+          debugPrint("EmberService: Read $name success");
+          return; // Success
+        } catch (e) {
+          debugPrint("EmberService: Failed to read $name (Attempt ${i + 1}/$maxRetries): $e");
+          if (i < maxRetries - 1) {
+             await Future.delayed(const Duration(milliseconds: 1000)); // Wait before retry
+          }
+        }
+      }
+    }
+
+    // Read in sequence with delays
+    await safeRead(_mugIdChar, "Mug ID");
+    await safeRead(_firmwareChar, "Firmware");
+    await safeRead(_batteryChar, "Battery");
+    await safeRead(_dskChar, "DSK");
+    await safeRead(_udskChar, "UDSK");
+  }
   
   Future<void> setLedColor(Color color) async {
     if (_ledChar == null) return;
@@ -277,6 +342,11 @@ class EmberService extends ChangeNotifier {
     _targetTempChar = null;
     _ledChar = null;
     _pushEventChar = null;
+    _mugIdChar = null;
+    _dskChar = null;
+    _udskChar = null;
+    _firmwareChar = null;
+    _batteryChar = null;
     _connectionSubscription?.cancel();
     notifyListeners();
   }
