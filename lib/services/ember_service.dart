@@ -14,6 +14,11 @@ class EmberService extends ChangeNotifier {
   BluetoothCharacteristic? _batteryChar;
   // ignore: unused_field
   BluetoothCharacteristic? _pushEventChar;
+  BluetoothCharacteristic? _mugIdChar;
+  BluetoothCharacteristic? _dskChar;
+  BluetoothCharacteristic? _udskChar;
+  BluetoothCharacteristic? _firmwareChar;
+  BluetoothCharacteristic? _batteryChar;
 
   bool _isScanning = false;
   bool get isScanning => _isScanning;
@@ -407,6 +412,39 @@ class EmberService extends ChangeNotifier {
       debugPrint("Error setting target temp: $e");
     }
   }
+
+  Future<void> _readInitialAttrs() async {
+    // Wait for connection to settle
+    debugPrint("EmberService: Waiting for connection to settle...");
+    await Future.delayed(const Duration(seconds: 2));
+    debugPrint("EmberService: Reading initial attributes...");
+    
+    // Helper function to read with delay and error handling and retry
+    Future<void> safeRead(BluetoothCharacteristic? char, String name) async {
+      if (char == null) return;
+      int maxRetries = 3;
+      for (int i = 0; i < maxRetries; i++) {
+        try {
+          await Future.delayed(const Duration(milliseconds: 1000)); // 1s delay between reads
+          await char.read(); 
+          debugPrint("EmberService: Read $name success");
+          return; // Success
+        } catch (e) {
+          debugPrint("EmberService: Failed to read $name (Attempt ${i + 1}/$maxRetries): $e");
+          if (i < maxRetries - 1) {
+             await Future.delayed(const Duration(milliseconds: 1000)); // Wait before retry
+          }
+        }
+      }
+    }
+
+    // Read in sequence with delays
+    await safeRead(_mugIdChar, "Mug ID");
+    await safeRead(_firmwareChar, "Firmware");
+    await safeRead(_batteryChar, "Battery");
+    await safeRead(_dskChar, "DSK");
+    await safeRead(_udskChar, "UDSK");
+  }
   
   Future<void> setLedColor(Color color) async {
     if (_ledChar == null) return;
@@ -433,6 +471,11 @@ class EmberService extends ChangeNotifier {
     _liquidStateChar = null;
     _batteryChar = null;
     _pushEventChar = null;
+    _mugIdChar = null;
+    _dskChar = null;
+    _udskChar = null;
+    _firmwareChar = null;
+    _batteryChar = null;
     _connectionSubscription?.cancel();
     notifyListeners();
   }
