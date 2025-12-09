@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -34,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       Permission.bluetooth,
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
-      Permission.location, // For Android < 12
+      Permission.location, // Required for Android 11 and lower scanning
     ].request();
 
     if (mounted && !kDebugMode) {
@@ -135,13 +136,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                          children: [
                            IconButton(
                              icon: const Icon(Icons.settings_outlined, color: Colors.white60),
-                             onPressed: () => Navigator.of(context).push(
+                             onPressed: () {
+                               HapticFeedback.mediumImpact();
+                               Navigator.of(context).push(
                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                             ),
+                               );
+                             },
                            ),
                            IconButton(
                              icon: const Icon(Icons.info_outline, color: Colors.white60),
-                             onPressed: () => _showInfoDialog(context),
+                             onPressed: () {
+                               HapticFeedback.mediumImpact();
+                               _showInfoDialog(context);
+                             },
                            ),
                          ],
                        ),
@@ -185,7 +192,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: service.startScan,
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              service.startScan();
+            },
             child: Container(
               width: 200,
               height: 200,
@@ -236,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             const SizedBox(height: 20),
             TextButton(
               onPressed: () {
+                HapticFeedback.mediumImpact();
                 setState(() {
                   _debugMockConnection = true;
                 });
@@ -358,6 +369,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             inactiveColor: isHeatingOn ? Colors.white12 : Colors.white.withValues(alpha: 0.05),
             thumbColor: isHeatingOn ? AppTheme.emberOrange : Colors.grey.withValues(alpha: 0.5),
             onChanged: isHeatingOn ? (val) {
+               if (sliderValue.round() != val.round()) {
+                 HapticFeedback.selectionClick();
+               }
                setState(() {
                  _draggedTemp = val;
                });
@@ -401,7 +415,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   
   Widget _colorButton(EmberService service, Color color, {bool enabled = true}) {
     return GestureDetector(
-      onTap: enabled ? () => service.setLedColor(color) : null,
+      onTap: enabled ? () {
+        HapticFeedback.mediumImpact();
+        service.setLedColor(color);
+      } : null,
       child: Container(
         width: 40,
         height: 40,
@@ -423,7 +440,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final displayColor = enabled ? buttonColor : Colors.grey;
     
     return GestureDetector(
-      onTap: enabled ? service.toggleHeating : null,
+      onTap: enabled ? () {
+        HapticFeedback.mediumImpact();
+        service.toggleHeating();
+      } : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
@@ -519,7 +539,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 24),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  Navigator.of(context).pop();
+                },
                 child: const Text("Got it", style: TextStyle(color: AppTheme.emberOrange, fontSize: 16)),
               ),
             ],

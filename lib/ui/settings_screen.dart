@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
@@ -25,7 +26,10 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.of(context).pop();
+                      },
                     ),
                     const SizedBox(width: 8),
                     const Text(
@@ -96,7 +100,10 @@ class SettingsScreen extends StatelessWidget {
     final isSelected = service.temperatureUnit == unit;
     
     return GestureDetector(
-      onTap: () => service.setTemperatureUnit(unit),
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        service.setTemperatureUnit(unit);
+      },
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

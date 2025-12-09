@@ -20,6 +20,8 @@ class EmberService extends ChangeNotifier {
   bool _isScanning = false;
   bool get isScanning => _isScanning;
   
+  bool _manualOff = false; // Flag to track if user explicitly turned off heating
+
   bool get isConnected => _connectedDevice != null;
   
   double? _currentTemp;
@@ -298,12 +300,6 @@ class EmberService extends ChangeNotifier {
               _readLiquidLevel();
             } else if (eventCode == 8) { // LIQUID_STATE_CHANGED
               await _readLiquidState();
-              // If cup becomes empty, turn off heat by setting target temp to 0
-              // Re-check isEmpty after the await to ensure we have the latest state
-              if (isEmpty && _targetTemp != null && _targetTemp! > 0) {
-                debugPrint("EmberService: Cup is empty, turning off heat");
-                setTargetTemp(0);
-              }
             } else if (eventCode == 1) { // BATTERY_CHANGED
               _readBatteryLevel();
             } else if (eventCode == 2) { // CHARGER_CONNECTED
@@ -377,6 +373,26 @@ class EmberService extends ChangeNotifier {
         _liquidState = value[0];
         String stateName = _getLiquidStateName(_liquidState!);
         debugPrint("EmberService: Liquid state: $_liquidState ($stateName)");
+        
+        // Automatic heating control based on liquid state
+        if (isEmpty) {
+          // Cup is empty, turn off heating if it's currently on
+          if ((_targetTemp ?? 0) > 0) {
+             debugPrint("EmberService: Cup empty, turning off heater.");
+             setTargetTemp(0); 
+          }
+        } else {
+          // Cup is not empty (has liquid), turn on heating if it's currently off
+          // This handles "refilling"
+          // Only restore if user hasn't manually turned it off
+          if ((_targetTemp ?? 0) <= 0 && !_manualOff) {
+             debugPrint("EmberService: Cup not empty, restoring heater.");
+             final prefs = await SharedPreferences.getInstance();
+             final savedTemp = prefs.getDouble('ember_target_temp');
+             setTargetTemp(savedTemp ?? 57.0);
+          }
+        }
+
         if (_currentTemp != null) {
              NotificationService().showTemperatureNotification(
                _currentTemp!, 
@@ -436,12 +452,7 @@ class EmberService extends ChangeNotifier {
   Future<void> setTargetTemp(double temp) async {
     if (_targetTempChar == null) return;
     
-    // Safety check: Don't allow temperature updates if cup is empty
-    if (isEmpty) {
-      debugPrint("EmberService: Cannot set temperature - cup is empty!");
-      // Force target temp to 0 (off) when empty
-      temp = 0;
-    }
+    // Safety check removed
     
     try {
       int raw = (temp / 0.01).round();
@@ -452,6 +463,7 @@ class EmberService extends ChangeNotifier {
       
       // Only save non-zero temperatures so we can restore the last used temp when toggling on
       if (temp > 0) {
+        _manualOff = false; // Reset manual flag since we are heating
         _lastValidTargetTemp = temp;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setDouble('ember_target_temp', temp);
@@ -477,9 +489,11 @@ class EmberService extends ChangeNotifier {
   Future<void> toggleHeating() async {
     if ((_targetTemp ?? 0) > 1.0) { // Check > 1.0 to account for potential 0.0 or near-zero readings
        // Turn off
+       _manualOff = true;
        await setTargetTemp(0);
     } else {
        // Turn on
+       _manualOff = false;
        final prefs = await SharedPreferences.getInstance();
        final savedTemp = prefs.getDouble('ember_target_temp');
        // Default to 57.0C (approx 135F) if no saved temp found
