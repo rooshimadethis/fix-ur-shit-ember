@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/ember_service.dart';
+import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final emberService = Provider.of<EmberService>(context);
+    final settingsService = Provider.of<SettingsService>(context);
 
     return Scaffold(
       body: Stack(
@@ -73,9 +76,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                            color: Colors.white60,
                          ),
                        ),
-                       IconButton(
-                         icon: const Icon(Icons.info_outline, color: Colors.white60),
-                         onPressed: () => _showInfoDialog(context),
+                       Row(
+                         children: [
+                           IconButton(
+                             icon: const Icon(Icons.settings_outlined, color: Colors.white60),
+                             onPressed: () => Navigator.of(context).push(
+                               MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                             ),
+                           ),
+                           IconButton(
+                             icon: const Icon(Icons.info_outline, color: Colors.white60),
+                             onPressed: () => _showInfoDialog(context),
+                           ),
+                         ],
                        ),
                      ],
                    ),
@@ -85,9 +98,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                    if (!emberService.isConnected) ...[
                      _buildScanButton(emberService),
                    ] else ...[
-                     _buildTemperatureDisplay(emberService),
+                     _buildTemperatureDisplay(emberService, settingsService),
                      const SizedBox(height: 40),
-                     _buildControls(emberService),
+                     _buildControls(emberService, settingsService),
                    ],
                    
                    const Spacer(),
@@ -169,13 +182,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildTemperatureDisplay(EmberService service) {
-    final temp = service.currentTemp ?? 0.0;
+  Widget _buildTemperatureDisplay(EmberService service, SettingsService settings) {
+    final tempCelsius = service.currentTemp ?? 0.0;
+    final displayTemp = settings.displayTemp(tempCelsius);
     
     return Column(
       children: [
         Text(
-          "${temp.toStringAsFixed(1)}°C",
+          "${displayTemp.toStringAsFixed(1)}${settings.unitSymbol}",
           style: const TextStyle(
             fontSize: 80,
             fontWeight: FontWeight.w200,
@@ -190,7 +204,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildControls(EmberService service) {
+  Widget _buildControls(EmberService service, SettingsService settings) {
+    // Get current target temp in Celsius (device uses Celsius)
+    final targetCelsius = service.targetTemp ?? 50.0;
+    // Convert to display unit
+    final displayTemp = settings.displayTemp(targetCelsius);
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -203,21 +222,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const Text("Target Temperature", style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 10),
           Slider(
-            value: (service.targetTemp ?? 50.0).clamp(50.0, 65.0),
-            min: 50.0,
-            max: 65.0,
+            value: displayTemp.clamp(settings.minTemp, settings.maxTemp),
+            min: settings.minTemp,
+            max: settings.maxTemp,
             activeColor: AppTheme.emberOrange,
             inactiveColor: Colors.white12,
             onChanged: (val) {
-               // Update locally and send to device (debouncing recommended but simple start)
-               service.setTargetTemp(val); 
+               // Convert display temp back to Celsius for the device
+               final celsiusTemp = settings.toDeviceTemp(val);
+               service.setTargetTemp(celsiusTemp); 
             },
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text("50°C", style: TextStyle(color: Colors.white38)),
-              Text("65°C", style: TextStyle(color: Colors.white38)),
+            children: [
+              Text("${settings.minTemp.toStringAsFixed(0)}${settings.unitSymbol}", style: const TextStyle(color: Colors.white38)),
+              Text("${settings.maxTemp.toStringAsFixed(0)}${settings.unitSymbol}", style: const TextStyle(color: Colors.white38)),
             ],
           ),
           const SizedBox(height: 20),
