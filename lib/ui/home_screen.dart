@@ -495,11 +495,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                "• Initialize First: The mug must be set up in the official Ember app at least once after a reset to enable control.\n\n"
-                "• Avoid Interference: Fully close the official Ember app before using this one. If connection issues persist, 'Forget' the mug in your Bluetooth settings.\n\n"
-                "• Troubleshooting: If the mug refuses to connect, perform a factory reset (hold the power button on the bottom for ~7 seconds until it flashes red) and then pair again.",
-                style: TextStyle(color: Colors.white70, height: 1.5),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const Text(
+                        "• Initialize First: The mug must be set up in the official Ember app at least once after a reset to enable control.\n\n"
+                        "• Avoid Interference: Fully close the official Ember app before using this one. If connection issues persist, 'Forget' the mug in your Bluetooth settings.\n\n"
+                        "• Troubleshooting: If the mug refuses to connect, perform a factory reset (hold the power button on the bottom for ~7 seconds until it flashes red) and then pair again.",
+                        style: TextStyle(color: Colors.white70, height: 1.5),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(color: Colors.white24),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "DISCLAIMER\n\n"
+                        "This software is provided \"as is\", without warranty of any kind. The developers are not affiliated with Ember®. Use this application at your own risk. The user assumes all responsibility for any potential damage to their device, mug, or voiding of warranties.",
+                        style: TextStyle(color: Colors.white38, height: 1.3, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               TextButton(
