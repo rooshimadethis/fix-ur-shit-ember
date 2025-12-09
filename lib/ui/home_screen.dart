@@ -34,6 +34,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       Permission.bluetoothConnect,
       Permission.location, // For Android < 12
     ].request();
+
+    if (mounted) {
+      Provider.of<EmberService>(context, listen: false).startScan();
+    }
   }
 
   @override
