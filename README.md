@@ -32,3 +32,7 @@ A Modern, Feature-Rich Control App for Ember Mugs, built with Flutter.
     *   **Modern Aesthetics:** Beautiful gradients and glassmorphism UI.
     *   **Paper Texture:** Subtle texture overlay for a unique, organic feel.
     *   **Visual Feedback:** Dynamic color changes based on heating state (Orange for heating, Blue for cooling/off).
+
+## Disclaimer
+
+This software is provided "as is", without warranty of any kind, express or implied. Use this application at your own risk. The developers of this project are not affiliated with Ember® or any of its subsidiaries. This application interacts with hardware (Ember Mug) using reverse-engineered protocols; the user assumes all responsibility for any potential damage to their device, mug, or voiding of warranties.
