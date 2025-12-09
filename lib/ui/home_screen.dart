@@ -312,13 +312,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   double? _draggedTemp;
 
   Widget _buildControls(EmberService service, SettingsService settings) {
+    // Check if heating is effectively on
+    bool isHeatingOn = (service.targetTemp ?? 0) > 1.0;
+
     // Get current target temp in Celsius (device uses Celsius)
-    final targetCelsius = service.targetTemp ?? 50.0;
+    // If off, show the last valid target temp so the slider doesn't jump to 0 or min
+    final targetCelsius = isHeatingOn 
+        ? (service.targetTemp ?? 50.0)
+        : (service.lastValidTargetTemp ?? 57.0);
+
     // Convert to display unit
     final displayTemp = settings.displayTemp(targetCelsius);
     
     // If user is dragging using local state, otherwise use real value
-    final sliderValue = _draggedTemp ?? displayTemp;
+    // If not heating, ignore dragged temp
+    final sliderValue = (isHeatingOn ? _draggedTemp : null) ?? displayTemp;
+    
+    // Check if data is loaded to enable controls
+    final bool isReady = service.currentTemp != null;
     
     return Container(
       padding: const EdgeInsets.all(20),
@@ -332,8 +343,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const Text("Target Temperature", style: TextStyle(color: Colors.white70)),
           Text(
             "${sliderValue.toStringAsFixed(0)}${settings.unitSymbol}",
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: isHeatingOn ? Colors.white : Colors.white38, // Dim text if off
               fontSize: 32,
               fontWeight: FontWeight.w600,
             ),
@@ -343,14 +354,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             value: sliderValue.clamp(settings.minTemp, settings.maxTemp),
             min: settings.minTemp,
             max: settings.maxTemp,
-            activeColor: AppTheme.emberOrange,
-            inactiveColor: Colors.white12,
-            onChanged: (val) {
+            activeColor: isHeatingOn ? AppTheme.emberOrange : Colors.grey.withValues(alpha: 0.3),
+            inactiveColor: isHeatingOn ? Colors.white12 : Colors.white.withValues(alpha: 0.05),
+            thumbColor: isHeatingOn ? AppTheme.emberOrange : Colors.grey.withValues(alpha: 0.5),
+            onChanged: isHeatingOn ? (val) {
                setState(() {
                  _draggedTemp = val;
                });
-            },
-            onChangeEnd: (val) {
+            } : null, // Disable slider when off
+            onChangeEnd: isHeatingOn ? (val) {
                // Convert display temp back to Celsius for the device
                final celsiusTemp = settings.toDeviceTemp(val);
                service.setTargetTemp(celsiusTemp); 
@@ -359,41 +371,94 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                setState(() {
                  _draggedTemp = null;
                });
-            },
+            } : null,
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("${settings.minTemp.toStringAsFixed(0)}${settings.unitSymbol}", style: const TextStyle(color: Colors.white38)),
-              Text("${settings.maxTemp.toStringAsFixed(0)}${settings.unitSymbol}", style: const TextStyle(color: Colors.white38)),
+              Text("${settings.minTemp.toStringAsFixed(0)}${settings.unitSymbol}", 
+                style: TextStyle(color: isHeatingOn ? Colors.white38 : Colors.white12)),
+              Text("${settings.maxTemp.toStringAsFixed(0)}${settings.unitSymbol}", 
+                style: TextStyle(color: isHeatingOn ? Colors.white38 : Colors.white12)),
             ],
           ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-               _colorButton(service, Colors.red),
-               _colorButton(service, Colors.green),
-               _colorButton(service, Colors.blue),
-               _colorButton(service, Colors.amber),
+               _colorButton(service, Colors.red, enabled: isHeatingOn),
+               _colorButton(service, Colors.green, enabled: isHeatingOn),
+               _colorButton(service, Colors.blue, enabled: isHeatingOn),
+               _colorButton(service, Colors.amber, enabled: isHeatingOn),
             ],
-          )
+          ),
+          const SizedBox(height: 24),
+          _buildPowerButton(service, enabled: isReady),
         ],
       ),
     );
   }
   
-  Widget _colorButton(EmberService service, Color color) {
+  Widget _colorButton(EmberService service, Color color, {bool enabled = true}) {
     return GestureDetector(
-      onTap: () => service.setLedColor(color),
+      onTap: enabled ? () => service.setLedColor(color) : null,
       child: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: color,
+          color: enabled ? color : color.withValues(alpha: 0.1),
           shape: BoxShape.circle,
-          boxShadow: [
+          boxShadow: enabled ? [
              BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2))
+          ] : [],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPowerButton(EmberService service, {bool enabled = true}) {
+    bool isHeatingOn = (service.targetTemp ?? 0) > 1.0;
+    
+    final buttonColor = isHeatingOn ? Colors.red : AppTheme.emberOrange;
+    final displayColor = enabled ? buttonColor : Colors.grey;
+    
+    return GestureDetector(
+      onTap: enabled ? service.toggleHeating : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        decoration: BoxDecoration(
+          color: displayColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: displayColor.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+          boxShadow: enabled ? [
+            BoxShadow(
+              color: displayColor.withValues(alpha: 0.1),
+              blurRadius: 10,
+              spreadRadius: 2,
+            )
+          ] : []
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isHeatingOn ? Icons.power_settings_new : Icons.local_fire_department,
+              color: displayColor,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              isHeatingOn ? "TURN OFF" : "HEAT UP",
+              style: TextStyle(
+                color: displayColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                letterSpacing: 1.2,
+              ),
+            ),
           ],
         ),
       ),

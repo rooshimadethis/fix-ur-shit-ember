@@ -28,6 +28,11 @@ class EmberService extends ChangeNotifier {
   double? _targetTemp;
   double? get targetTemp => _targetTemp;
 
+  double? _lastValidTargetTemp;
+  double? get lastValidTargetTemp => _lastValidTargetTemp;
+
+
+
   int? _liquidLevel;
   int? get liquidLevel => _liquidLevel;
 
@@ -256,6 +261,7 @@ class EmberService extends ChangeNotifier {
       final savedTemp = prefs.getDouble('ember_target_temp');
       if (savedTemp != null && savedTemp > 0) {
         debugPrint("EmberService: Restoring saved target temp: $savedTemp");
+        _lastValidTargetTemp = savedTemp;
         await setTargetTemp(savedTemp);
       } else {
         // If no saved temp, read from device
@@ -324,7 +330,13 @@ class EmberService extends ChangeNotifier {
       List<int> value = await _currentTempChar!.read();
       _currentTemp = _parseTemp(value);
       debugPrint("EmberService: Current temp: $_currentTemp°C");
-      NotificationService().showTemperatureNotification(_currentTemp ?? 0, isHeating: isHeating);
+      NotificationService().showTemperatureNotification(
+        _currentTemp ?? 0, 
+        isHeating: isHeating,
+        isPerfect: isPerfect,
+        isOff: (_targetTemp ?? 0) <= 1.0,
+        batteryPercent: batteryLevel,
+      );
       notifyListeners();
     } catch (e) {
       debugPrint("EmberService: Error reading current temp: $e");
@@ -366,7 +378,13 @@ class EmberService extends ChangeNotifier {
         String stateName = _getLiquidStateName(_liquidState!);
         debugPrint("EmberService: Liquid state: $_liquidState ($stateName)");
         if (_currentTemp != null) {
-             NotificationService().showTemperatureNotification(_currentTemp!, isHeating: isHeating);
+             NotificationService().showTemperatureNotification(
+               _currentTemp!, 
+               isHeating: isHeating,
+               isPerfect: isPerfect,
+               isOff: (_targetTemp ?? 0) <= 1.0,
+               batteryPercent: batteryLevel,
+             );
         }
         notifyListeners();
       }
@@ -385,6 +403,15 @@ class EmberService extends ChangeNotifier {
           _isCharging = (value[1] == 1);
         }
         debugPrint("EmberService: Battery level: $_batteryLevel%, Charging: $_isCharging");
+        if (_currentTemp != null) {
+          NotificationService().showTemperatureNotification(
+            _currentTemp!, 
+            isHeating: isHeating,
+            isPerfect: isPerfect,
+            isOff: (_targetTemp ?? 0) <= 1.0,
+            batteryPercent: _batteryLevel,
+          );
+        }
         notifyListeners();
       }
     } catch (e) {
@@ -422,12 +449,41 @@ class EmberService extends ChangeNotifier {
       await _targetTempChar!.write(bytes);
       _targetTemp = temp; // Optimistic update
       
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble('ember_target_temp', temp);
+      
+      // Only save non-zero temperatures so we can restore the last used temp when toggling on
+      if (temp > 0) {
+        _lastValidTargetTemp = temp;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble('ember_target_temp', temp);
+      }
       
       notifyListeners();
+      
+      // Update notification immediately to reflect potential Off state or Heating state change
+      if (_currentTemp != null) {
+        NotificationService().showTemperatureNotification(
+          _currentTemp!, 
+          isHeating: isHeating,
+          isPerfect: isPerfect,
+          isOff: (_targetTemp ?? 0) <= 1.0,
+          batteryPercent: batteryLevel,
+        );
+      }
     } catch (e) {
       debugPrint("Error setting target temp: $e");
+    }
+  }
+
+  Future<void> toggleHeating() async {
+    if ((_targetTemp ?? 0) > 1.0) { // Check > 1.0 to account for potential 0.0 or near-zero readings
+       // Turn off
+       await setTargetTemp(0);
+    } else {
+       // Turn on
+       final prefs = await SharedPreferences.getInstance();
+       final savedTemp = prefs.getDouble('ember_target_temp');
+       // Default to 57.0C (approx 135F) if no saved temp found
+       await setTargetTemp(savedTemp ?? 57.0);
     }
   }
 

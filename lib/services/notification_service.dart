@@ -43,7 +43,7 @@ class NotificationService {
     }
   }
 
-  Future<void> showTemperatureNotification(double tempCelsius, {bool isHeating = false}) async {
+  Future<void> showTemperatureNotification(double tempCelsius, {bool isHeating = false, bool isOff = false, bool isPerfect = false, int? batteryPercent}) async {
     final prefs = await SharedPreferences.getInstance();
     final unitString = prefs.getString(SettingsService.tempUnitKey);
     final isFahrenheit = unitString != 'celsius'; // Default to Fahrenheit if null or anything else
@@ -75,11 +75,25 @@ class NotificationService {
     String tempString = isFahrenheit 
         ? displayTemp.toStringAsFixed(0) 
         : displayTemp.toStringAsFixed(1);
+        
+    String statusSuffix = "";
+    if (isOff) {
+      statusSuffix = " (Off)";
+    } else if (isPerfect) {
+      statusSuffix = " (Perfect)";
+    } else if (isHeating) {
+      statusSuffix = " (Heating)";
+    }
+
+    String title = 'Ember Mug';
+    if (batteryPercent != null) {
+      title = 'Ember Mug ($batteryPercent%)';
+    }
 
     await flutterLocalNotificationsPlugin.show(
       88, // Constant ID
-      'Ember Mug',
-      'Current Temperature: $tempString$unitSymbol${isHeating ? " (Heating)" : ""}',
+      '$tempString$unitSymbol$statusSuffix',
+      title,
       notificationDetails,
     );
   }
