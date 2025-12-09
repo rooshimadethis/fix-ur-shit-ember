@@ -7,7 +7,7 @@ enum TemperatureUnit {
 }
 
 class SettingsService extends ChangeNotifier {
-  static const String _tempUnitKey = 'temperature_unit';
+  static const String tempUnitKey = 'temperature_unit';
   
   TemperatureUnit _temperatureUnit = TemperatureUnit.fahrenheit; // Default to Fahrenheit
   TemperatureUnit get temperatureUnit => _temperatureUnit;
@@ -21,7 +21,7 @@ class SettingsService extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final unitString = prefs.getString(_tempUnitKey);
+    final unitString = prefs.getString(tempUnitKey);
     
     if (unitString != null) {
       _temperatureUnit = unitString == 'celsius' 
@@ -38,7 +38,7 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
     
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tempUnitKey, unit == TemperatureUnit.celsius ? 'celsius' : 'fahrenheit');
+    await prefs.setString(tempUnitKey, unit == TemperatureUnit.celsius ? 'celsius' : 'fahrenheit');
   }
 
   // Convert Celsius to Fahrenheit

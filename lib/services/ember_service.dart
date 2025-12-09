@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
+import 'notification_service.dart';
 
 class EmberService extends ChangeNotifier {
   BluetoothDevice? _connectedDevice;
@@ -14,11 +16,6 @@ class EmberService extends ChangeNotifier {
   BluetoothCharacteristic? _batteryChar;
   // ignore: unused_field
   BluetoothCharacteristic? _pushEventChar;
-  BluetoothCharacteristic? _mugIdChar;
-  BluetoothCharacteristic? _dskChar;
-  BluetoothCharacteristic? _udskChar;
-  BluetoothCharacteristic? _firmwareChar;
-  BluetoothCharacteristic? _batteryChar;
 
   bool _isScanning = false;
   bool get isScanning => _isScanning;
@@ -252,6 +249,19 @@ class EmberService extends ChangeNotifier {
     if (_batteryChar != null) {
       await _readBatteryLevel();
     }
+
+    // Restore saved target temperature
+    if (_targetTempChar != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final savedTemp = prefs.getDouble('ember_target_temp');
+      if (savedTemp != null && savedTemp > 0) {
+        debugPrint("EmberService: Restoring saved target temp: $savedTemp");
+        await setTargetTemp(savedTemp);
+      } else {
+        // If no saved temp, read from device
+        await _readTargetTemp();
+      }
+    }
   }
 
   Future<void> _setupNotifications(BluetoothCharacteristic characteristic) async {
@@ -314,6 +324,7 @@ class EmberService extends ChangeNotifier {
       List<int> value = await _currentTempChar!.read();
       _currentTemp = _parseTemp(value);
       debugPrint("EmberService: Current temp: $_currentTemp°C");
+      NotificationService().showTemperatureNotification(_currentTemp ?? 0, isHeating: isHeating);
       notifyListeners();
     } catch (e) {
       debugPrint("EmberService: Error reading current temp: $e");
@@ -354,6 +365,9 @@ class EmberService extends ChangeNotifier {
         _liquidState = value[0];
         String stateName = _getLiquidStateName(_liquidState!);
         debugPrint("EmberService: Liquid state: $_liquidState ($stateName)");
+        if (_currentTemp != null) {
+             NotificationService().showTemperatureNotification(_currentTemp!, isHeating: isHeating);
+        }
         notifyListeners();
       }
     } catch (e) {
@@ -407,44 +421,17 @@ class EmberService extends ChangeNotifier {
       List<int> bytes = [raw & 0xFF, (raw >> 8) & 0xFF];
       await _targetTempChar!.write(bytes);
       _targetTemp = temp; // Optimistic update
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('ember_target_temp', temp);
+      
       notifyListeners();
     } catch (e) {
       debugPrint("Error setting target temp: $e");
     }
   }
 
-  Future<void> _readInitialAttrs() async {
-    // Wait for connection to settle
-    debugPrint("EmberService: Waiting for connection to settle...");
-    await Future.delayed(const Duration(seconds: 2));
-    debugPrint("EmberService: Reading initial attributes...");
-    
-    // Helper function to read with delay and error handling and retry
-    Future<void> safeRead(BluetoothCharacteristic? char, String name) async {
-      if (char == null) return;
-      int maxRetries = 3;
-      for (int i = 0; i < maxRetries; i++) {
-        try {
-          await Future.delayed(const Duration(milliseconds: 1000)); // 1s delay between reads
-          await char.read(); 
-          debugPrint("EmberService: Read $name success");
-          return; // Success
-        } catch (e) {
-          debugPrint("EmberService: Failed to read $name (Attempt ${i + 1}/$maxRetries): $e");
-          if (i < maxRetries - 1) {
-             await Future.delayed(const Duration(milliseconds: 1000)); // Wait before retry
-          }
-        }
-      }
-    }
 
-    // Read in sequence with delays
-    await safeRead(_mugIdChar, "Mug ID");
-    await safeRead(_firmwareChar, "Firmware");
-    await safeRead(_batteryChar, "Battery");
-    await safeRead(_dskChar, "DSK");
-    await safeRead(_udskChar, "UDSK");
-  }
   
   Future<void> setLedColor(Color color) async {
     if (_ledChar == null) return;
@@ -471,12 +458,8 @@ class EmberService extends ChangeNotifier {
     _liquidStateChar = null;
     _batteryChar = null;
     _pushEventChar = null;
-    _mugIdChar = null;
-    _dskChar = null;
-    _udskChar = null;
-    _firmwareChar = null;
-    _batteryChar = null;
     _connectionSubscription?.cancel();
+    NotificationService().cancel();
     notifyListeners();
   }
 

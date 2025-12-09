@@ -269,7 +269,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           ),
         Text(
-          "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.fahrenheit ? 0 : 1)}${settings.unitSymbol}",
+          service.currentTemp != null
+              ? "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.fahrenheit ? 0 : 1)}${settings.unitSymbol}"
+              : "--${settings.unitSymbol}",
           style: const TextStyle(
             fontSize: 80,
             fontWeight: FontWeight.w200,
