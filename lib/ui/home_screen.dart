@@ -196,6 +196,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     
     return Column(
       children: [
+        if (service.isEmpty)
+          const Text(
+            "EMPTY",
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2.0,
+            ),
+          ),
         Text(
           "${displayTemp.toStringAsFixed(1)}${settings.unitSymbol}",
           style: const TextStyle(
@@ -235,11 +245,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  double? _draggedTemp;
+
   Widget _buildControls(EmberService service, SettingsService settings) {
     // Get current target temp in Celsius (device uses Celsius)
     final targetCelsius = service.targetTemp ?? 50.0;
     // Convert to display unit
     final displayTemp = settings.displayTemp(targetCelsius);
+    
+    // If user is dragging using local state, otherwise use real value
+    final sliderValue = _draggedTemp ?? displayTemp;
     
     return Container(
       padding: const EdgeInsets.all(20),
@@ -253,15 +268,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const Text("Target Temperature", style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 10),
           Slider(
-            value: displayTemp.clamp(settings.minTemp, settings.maxTemp),
+            value: sliderValue.clamp(settings.minTemp, settings.maxTemp),
             min: settings.minTemp,
             max: settings.maxTemp,
             activeColor: AppTheme.emberOrange,
             inactiveColor: Colors.white12,
             onChanged: (val) {
+               setState(() {
+                 _draggedTemp = val;
+               });
+            },
+            onChangeEnd: (val) {
                // Convert display temp back to Celsius for the device
                final celsiusTemp = settings.toDeviceTemp(val);
                service.setTargetTemp(celsiusTemp); 
+               
+               // Clear local drag state after a short delay to allow service to update
+               setState(() {
+                 _draggedTemp = null;
+               });
             },
           ),
           Row(
