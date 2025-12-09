@@ -9,6 +9,9 @@ class EmberService extends ChangeNotifier {
   BluetoothCharacteristic? _currentTempChar;
   BluetoothCharacteristic? _targetTempChar;
   BluetoothCharacteristic? _ledChar;
+  BluetoothCharacteristic? _liquidLevelChar;
+  BluetoothCharacteristic? _liquidStateChar;
+  BluetoothCharacteristic? _batteryChar;
   // ignore: unused_field
   BluetoothCharacteristic? _pushEventChar;
   BluetoothCharacteristic? _mugIdChar;
@@ -27,6 +30,23 @@ class EmberService extends ChangeNotifier {
 
   double? _targetTemp;
   double? get targetTemp => _targetTemp;
+
+  int? _liquidLevel;
+  int? get liquidLevel => _liquidLevel;
+
+  int? _liquidState; // 0=Standby, 1=Empty, 2=Filling, 3=Cold, 4=Cooling, 5=Heating, 6=Perfect, 7=Warm
+  int? get liquidState => _liquidState;
+  
+  bool get isEmpty => _liquidState == 1; // LiquidState.EMPTY = 1
+  bool get isHeating => _liquidState == 5; // LiquidState.HEATING = 5
+  bool get isPerfect => _liquidState == 6; // LiquidState.PERFECT = 6
+
+  int? _batteryLevel;
+  int? get batteryLevel => _batteryLevel;
+
+  bool? _isCharging;
+  bool? get isCharging => _isCharging;
+
 
   StreamSubscription? _scanSubscription;
   StreamSubscription? _connectionSubscription;
@@ -61,16 +81,20 @@ class EmberService extends ChangeNotifier {
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
         for (ScanResult result in results) {
           String name = result.device.platformName;
+          String advName = result.advertisementData.advName;
+          
+          if (name.isEmpty) name = advName;
+          
           debugPrint("EmberService: Found device: $name (${result.device.remoteId}) RSSI: ${result.rssi}");
           
           if (name.toLowerCase().contains("ember")) {
              debugPrint("EmberService: FOUND EMBER! Connecting to $name...");
-             connect(result.device);
-             FlutterBluePlus.stopScan();
+             _connectToFoundDevice(result.device);
              break;
           }
         }
       });
+      
     } catch (e) {
       debugPrint("EmberService: Error scanning: $e");
       _isScanning = false;
@@ -86,6 +110,14 @@ class EmberService extends ChangeNotifier {
     });
   }
 
+  Future<void> _connectToFoundDevice(BluetoothDevice device) async {
+    // Stop scanning before connecting is crucial on Android
+    await FlutterBluePlus.stopScan();
+    _isScanning = false;
+    notifyListeners();
+    connect(device);
+  }
+
   void stopScan() {
     FlutterBluePlus.stopScan();
     _scanSubscription?.cancel();
@@ -93,7 +125,12 @@ class EmberService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _isConnecting = false;
+
   Future<void> connect(BluetoothDevice device) async {
+    if (_isConnecting || _connectedDevice != null) return;
+    _isConnecting = true;
+    
     debugPrint("EmberService: Attempting to connect to ${device.remoteId}...");
     try {
       // mtu: null prevents the auto-request of 512 bytes which causes Error 133 on some Android phones/devices
@@ -101,24 +138,23 @@ class EmberService extends ChangeNotifier {
       debugPrint("EmberService: Connected!");
       _connectedDevice = device;
       
-      // Attempt to pair (match Python implementation)
-      try {
-        debugPrint("EmberService: Attempting to pair...");
-        await device.createBond();
-        debugPrint("EmberService: Pairing successful or already paired");
-      } catch (e) {
-        debugPrint("EmberService: Pairing failed (might be okay if already paired): $e");
-      }
+      // mtu: null prevents the auto-request of 512 bytes which causes Error 133 on some Android phones/devices
+      await device.connect(autoConnect: false, mtu: null);
+      debugPrint("EmberService: Connected!");
+      _connectedDevice = device;
       
       // Listen to connection state
       _connectionSubscription = device.connectionState.listen((state) {
         debugPrint("EmberService: Connection state changed to: $state");
         if (state == BluetoothConnectionState.disconnected) {
-          disconnect();
+            // Optional: attempt auto-reconnect logic here if desired, 
+            // or just notify UI.
+            debugPrint("EmberService: Device disconnected.");
+            disconnect(); 
         }
       });
 
-      // Discover services immediately - don't wait too long or we'll get link supervision timeout
+      // Discover services immediately
       debugPrint("EmberService: Discovering services...");
       try {
         await _discoverServices(device);
@@ -140,6 +176,8 @@ class EmberService extends ChangeNotifier {
     } catch (e) {
       debugPrint("EmberService: Error connecting: $e");
       disconnect();
+    } finally {
+      _isConnecting = false;
     }
   }
 
@@ -173,21 +211,15 @@ class EmberService extends ChangeNotifier {
         } else if (charUuidStr == EmberConstants.ledCharUuid.toLowerCase()) {
           debugPrint("EmberService: Found LED Char");
           _ledChar = characteristic;
+        } else if (charUuidStr == EmberConstants.liquidLevelCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found Liquid Level Char");
+          _liquidLevelChar = characteristic;
+        } else if (charUuidStr == EmberConstants.liquidStateCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found Liquid State Char");
+          _liquidStateChar = characteristic;
         } else if (charUuidStr == EmberConstants.pushEventCharUuid.toLowerCase()) {
           debugPrint("EmberService: Found Push Event Char (notifications)");
           _pushEventChar = characteristic;
-        } else if (charUuidStr == EmberConstants.mugIdCharUuid.toLowerCase()) {
-          debugPrint("EmberService: Found Mug ID Char");
-          _mugIdChar = characteristic;
-        } else if (charUuidStr == EmberConstants.dskCharUuid.toLowerCase()) {
-          debugPrint("EmberService: Found DSK Char");
-          _dskChar = characteristic;
-        } else if (charUuidStr == EmberConstants.udskCharUuid.toLowerCase()) {
-          debugPrint("EmberService: Found UDSK Char");
-          _udskChar = characteristic;
-        } else if (charUuidStr == EmberConstants.firmwareCharUuid.toLowerCase()) {
-          debugPrint("EmberService: Found Firmware Char");
-          _firmwareChar = characteristic;
         } else if (charUuidStr == EmberConstants.batteryCharUuid.toLowerCase()) {
           debugPrint("EmberService: Found Battery Char");
           _batteryChar = characteristic;
@@ -203,13 +235,23 @@ class EmberService extends ChangeNotifier {
       await _setupNotifications(_pushEventChar!);
     }
     
+    // Then read liquid state and level
+    if (_liquidStateChar != null) {
+      await _readLiquidState();
+    }
+    if (_liquidLevelChar != null) {
+      await _readLiquidLevel();
+    }
+    
     // Then read current temperature
     if (_currentTempChar != null) {
       await _readCurrentTemp();
     }
-
-    // Read initial attributes (like Python's update_initial)
-    await _readInitialAttrs();
+    
+    // Read battery
+    if (_batteryChar != null) {
+      await _readBatteryLevel();
+    }
   }
 
   Future<void> _setupNotifications(BluetoothCharacteristic characteristic) async {
@@ -233,12 +275,28 @@ class EmberService extends ChangeNotifier {
            // 1: BATTERY_CHANGED, 2: CHARGER_CONNECTED, 3: CHARGER_DISCONNECTED
            // 4: TARGET_TEMPERATURE_CHANGED, 5: DRINK_TEMPERATURE_CHANGED
            // 6: AUTH_INFO_NOT_FOUND, 7: LIQUID_LEVEL_CHANGED, 8: LIQUID_STATE_CHANGED
-           
-           if (eventCode == 5) { // DRINK_TEMPERATURE_CHANGED
-             _readCurrentTemp();
-           } else if (eventCode == 4) { // TARGET_TEMPERATURE_CHANGED
-             _readTargetTemp();
-           }
+                      if (eventCode == 5) { // DRINK_TEMPERATURE_CHANGED
+              _readCurrentTemp();
+            } else if (eventCode == 4) { // TARGET_TEMPERATURE_CHANGED
+              _readTargetTemp();
+            } else if (eventCode == 7) { // LIQUID_LEVEL_CHANGED
+              _readLiquidLevel();
+            } else if (eventCode == 8) { // LIQUID_STATE_CHANGED
+              _readLiquidState();
+              // If cup becomes empty, turn off heat by setting target temp to 0
+              if (isEmpty && _targetTemp != null && _targetTemp! > 0) {
+                debugPrint("EmberService: Cup is empty, turning off heat");
+                setTargetTemp(0);
+              }
+            } else if (eventCode == 1) { // BATTERY_CHANGED
+              _readBatteryLevel();
+            } else if (eventCode == 2) { // CHARGER_CONNECTED
+              _isCharging = true;
+              _readBatteryLevel();
+            } else if (eventCode == 3) { // CHARGER_DISCONNECTED
+              _isCharging = false;
+              _readBatteryLevel();
+            }
            // Add more event handlers as needed
          }
       });
@@ -274,8 +332,76 @@ class EmberService extends ChangeNotifier {
     }
   }
 
+  Future<void> _readLiquidLevel() async {
+    if (_liquidLevelChar == null) return;
+    try {
+      List<int> value = await _liquidLevelChar!.read();
+      if (value.isNotEmpty) {
+        _liquidLevel = value[0] | (value.length > 1 ? value[1] << 8 : 0);
+        debugPrint("EmberService: Liquid level: $_liquidLevel");
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("EmberService: Error reading liquid level: $e");
+    }
+  }
+
+  Future<void> _readLiquidState() async {
+    if (_liquidStateChar == null) return;
+    try {
+      List<int> value = await _liquidStateChar!.read();
+      if (value.isNotEmpty) {
+        _liquidState = value[0];
+        String stateName = _getLiquidStateName(_liquidState!);
+        debugPrint("EmberService: Liquid state: $_liquidState ($stateName)");
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("EmberService: Error reading liquid state: $e");
+    }
+  }
+
+  Future<void> _readBatteryLevel() async {
+    if (_batteryChar == null) return;
+    try {
+      List<int> value = await _batteryChar!.read();
+      if (value.isNotEmpty) {
+        _batteryLevel = value[0];
+        if (value.length > 1) {
+          _isCharging = (value[1] == 1);
+        }
+        debugPrint("EmberService: Battery level: $_batteryLevel%, Charging: $_isCharging");
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("EmberService: Error reading battery level: $e");
+    }
+  }
+
+  String _getLiquidStateName(int state) {
+    const stateNames = {
+      0: 'Standby',
+      1: 'Empty',
+      2: 'Filling',
+      3: 'Cold (No control)',
+      4: 'Cooling',
+      5: 'Heating',
+      6: 'Perfect',
+      7: 'Warm (No control)',
+    };
+    return stateNames[state] ?? 'Unknown';
+  }
+
   Future<void> setTargetTemp(double temp) async {
     if (_targetTempChar == null) return;
+    
+    // Safety check: Don't allow temperature updates if cup is empty
+    if (isEmpty) {
+      debugPrint("EmberService: Cannot set temperature - cup is empty!");
+      // Force target temp to 0 (off) when empty
+      temp = 0;
+    }
+    
     try {
       int raw = (temp / 0.01).round();
       List<int> bytes = [raw & 0xFF, (raw >> 8) & 0xFF];
@@ -341,6 +467,9 @@ class EmberService extends ChangeNotifier {
     _currentTempChar = null;
     _targetTempChar = null;
     _ledChar = null;
+    _liquidLevelChar = null;
+    _liquidStateChar = null;
+    _batteryChar = null;
     _pushEventChar = null;
     _mugIdChar = null;
     _dskChar = null;

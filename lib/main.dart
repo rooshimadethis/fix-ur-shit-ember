@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'services/ember_service.dart';
+import 'services/settings_service.dart';
 import 'theme/app_theme.dart';
 import 'ui/home_screen.dart';
 
@@ -17,6 +18,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => EmberService()),
+        ChangeNotifierProvider(create: (_) => SettingsService()),
       ],
       child: MaterialApp(
         title: 'Fix Ur Shit Ember',

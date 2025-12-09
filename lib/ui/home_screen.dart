@@ -1,9 +1,12 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/ember_service.dart';
+import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  bool _debugMockConnection = false;
 
   @override
   void initState() {
@@ -32,6 +36,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       Permission.bluetoothConnect,
       Permission.location, // For Android < 12
     ].request();
+
+    if (mounted && !kDebugMode) {
+      Provider.of<EmberService>(context, listen: false).startScan();
+    }
   }
 
   @override
@@ -43,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final emberService = Provider.of<EmberService>(context);
+    final settingsService = Provider.of<SettingsService>(context);
 
     return Scaffold(
       body: Stack(
@@ -51,6 +60,55 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           Container(
             decoration: const BoxDecoration(
               gradient: AppTheme.backgroundGradient,
+            ),
+          ),
+
+          // Heating/Cooling Gradient Overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 1000),
+                curve: Curves.easeInOut,
+                opacity: (emberService.isConnected || _debugMockConnection) ? 1.0 : 0.0, // Show when connected or debug
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 1000),
+                  curve: Curves.easeInOut,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: (emberService.isHeating || emberService.isPerfect)
+                          ? [
+                              Colors.red.withValues(alpha: 0.4),
+                              AppTheme.emberOrange.withValues(alpha: 0.2),
+                              Colors.transparent,
+                            ]
+                          : [
+                              Colors.blue.withValues(alpha: 0.4),
+                              Colors.cyan.withValues(alpha: 0.2),
+                              Colors.transparent,
+                            ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Paper Texture Overlay
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.15,
+              child: Image.asset(
+                'assets/paper_texture.png',
+                fit: BoxFit.cover,
+                color: const Color(0xFFF8F2E6),
+              ),
             ),
           ),
           
@@ -73,21 +131,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                            color: Colors.white60,
                          ),
                        ),
-                       IconButton(
-                         icon: const Icon(Icons.info_outline, color: Colors.white60),
-                         onPressed: () => _showInfoDialog(context),
+                       Row(
+                         children: [
+                           IconButton(
+                             icon: const Icon(Icons.settings_outlined, color: Colors.white60),
+                             onPressed: () => Navigator.of(context).push(
+                               MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                             ),
+                           ),
+                           IconButton(
+                             icon: const Icon(Icons.info_outline, color: Colors.white60),
+                             onPressed: () => _showInfoDialog(context),
+                           ),
+                         ],
                        ),
                      ],
                    ),
                    const Spacer(),
                    
                    // Status / Connection
-                   if (!emberService.isConnected) ...[
+                   if (!emberService.isConnected && !_debugMockConnection) ...[
                      _buildScanButton(emberService),
                    ] else ...[
-                     _buildTemperatureDisplay(emberService),
+                     _buildTemperatureDisplay(emberService, settingsService),
                      const SizedBox(height: 40),
-                     _buildControls(emberService),
+                     _buildControls(emberService, settingsService),
                    ],
                    
                    const Spacer(),
@@ -164,18 +232,44 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
           ),
+          if (kDebugMode) ...[
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _debugMockConnection = true;
+                });
+              },
+              child: const Text("DEBUG: Show Controls", style: TextStyle(color: Colors.red)),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildTemperatureDisplay(EmberService service) {
-    final temp = service.currentTemp ?? 0.0;
+
+
+  Widget _buildTemperatureDisplay(EmberService service, SettingsService settings) {
+    final tempCelsius = service.currentTemp ?? 0.0;
+    final displayTemp = settings.displayTemp(tempCelsius);
+    final batteryLevel = service.batteryLevel;
+    final isCharging = service.isCharging == true;
     
     return Column(
       children: [
+        if (service.isEmpty)
+          const Text(
+            "EMPTY",
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2.0,
+            ),
+          ),
         Text(
-          "${temp.toStringAsFixed(1)}°C",
+          "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.fahrenheit ? 0 : 1)}${settings.unitSymbol}",
           style: const TextStyle(
             fontSize: 80,
             fontWeight: FontWeight.w200,
@@ -186,11 +280,44 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           "Current Temperature",
           style: TextStyle(color: Colors.white54, fontSize: 16),
         ),
+        if (batteryLevel != null) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isCharging ? Icons.battery_charging_full : Icons.battery_std,
+                color: batteryLevel < 20 ? Colors.redAccent : Colors.white70,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "$batteryLevel%",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildControls(EmberService service) {
+  double? _draggedTemp;
+
+  Widget _buildControls(EmberService service, SettingsService settings) {
+    // Get current target temp in Celsius (device uses Celsius)
+    final targetCelsius = service.targetTemp ?? 50.0;
+    // Convert to display unit
+    final displayTemp = settings.displayTemp(targetCelsius);
+    
+    // If user is dragging using local state, otherwise use real value
+    final sliderValue = _draggedTemp ?? displayTemp;
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -201,23 +328,42 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: Column(
         children: [
           const Text("Target Temperature", style: TextStyle(color: Colors.white70)),
+          Text(
+            "${sliderValue.toStringAsFixed(0)}${settings.unitSymbol}",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 10),
           Slider(
-            value: (service.targetTemp ?? 50.0).clamp(50.0, 65.0),
-            min: 50.0,
-            max: 65.0,
+            value: sliderValue.clamp(settings.minTemp, settings.maxTemp),
+            min: settings.minTemp,
+            max: settings.maxTemp,
             activeColor: AppTheme.emberOrange,
             inactiveColor: Colors.white12,
             onChanged: (val) {
-               // Update locally and send to device (debouncing recommended but simple start)
-               service.setTargetTemp(val); 
+               setState(() {
+                 _draggedTemp = val;
+               });
+            },
+            onChangeEnd: (val) {
+               // Convert display temp back to Celsius for the device
+               final celsiusTemp = settings.toDeviceTemp(val);
+               service.setTargetTemp(celsiusTemp); 
+               
+               // Clear local drag state after a short delay to allow service to update
+               setState(() {
+                 _draggedTemp = null;
+               });
             },
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text("50°C", style: TextStyle(color: Colors.white38)),
-              Text("65°C", style: TextStyle(color: Colors.white38)),
+            children: [
+              Text("${settings.minTemp.toStringAsFixed(0)}${settings.unitSymbol}", style: const TextStyle(color: Colors.white38)),
+              Text("${settings.maxTemp.toStringAsFixed(0)}${settings.unitSymbol}", style: const TextStyle(color: Colors.white38)),
             ],
           ),
           const SizedBox(height: 20),
