@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  bool _debugMockConnection = false;
 
   @override
   void initState() {
@@ -35,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       Permission.location, // For Android < 12
     ].request();
 
-    if (mounted) {
+    if (mounted && !kDebugMode) {
       Provider.of<EmberService>(context, listen: false).startScan();
     }
   }
@@ -71,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 1000),
                 curve: Curves.easeInOut,
-                opacity: emberService.isConnected ? 1.0 : 0.0, // Show when connected
+                opacity: (emberService.isConnected || _debugMockConnection) ? 1.0 : 0.0, // Show when connected or debug
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 1000),
                   curve: Curves.easeInOut,
@@ -94,6 +96,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                   ),
                 ),
+              ),
+            ),
+          ),
+
+          // Paper Texture Overlay
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.15,
+              child: Image.asset(
+                'assets/paper_texture.png',
+                fit: BoxFit.cover,
+                color: const Color(0xFFF8F2E6),
               ),
             ),
           ),
@@ -136,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                    const Spacer(),
                    
                    // Status / Connection
-                   if (!emberService.isConnected) ...[
+                   if (!emberService.isConnected && !_debugMockConnection) ...[
                      _buildScanButton(emberService),
                    ] else ...[
                      _buildTemperatureDisplay(emberService, settingsService),
@@ -218,6 +232,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
           ),
+          if (kDebugMode) ...[
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _debugMockConnection = true;
+                });
+              },
+              child: const Text("DEBUG: Show Controls", style: TextStyle(color: Colors.red)),
+            ),
+          ],
         ],
       ),
     );
@@ -303,6 +328,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: Column(
         children: [
           const Text("Target Temperature", style: TextStyle(color: Colors.white70)),
+          Text(
+            "${sliderValue.toStringAsFixed(0)}${settings.unitSymbol}",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 10),
           Slider(
             value: sliderValue.clamp(settings.minTemp, settings.maxTemp),

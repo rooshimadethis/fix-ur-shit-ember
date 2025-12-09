@@ -11,7 +11,7 @@ class AppTheme {
       surface: Color(0xFF1E1E1E),
     ),
     useMaterial3: true,
-    fontFamily: 'Inter', // Assuming standard font or system default if not added. I won't add font file yet.
+    fontFamily: 'StackSansText',
     textTheme: const TextTheme(
       displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
       bodyLarge: TextStyle(fontSize: 16, color: Colors.white70),
