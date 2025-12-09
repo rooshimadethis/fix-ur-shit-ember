@@ -1,3 +1,5 @@
+> **Special Thanks**: Thank you to the team behind [python-ember-mug](https://github.com/sopelj/python-ember-mug) for their work in reverse-engineering the Ember Mug Bluetooth protocol
+
 # Fix Ur Shit Ember
 
 A Modern, Feature-Rich Control App for Ember Mugs, built with Flutter.
