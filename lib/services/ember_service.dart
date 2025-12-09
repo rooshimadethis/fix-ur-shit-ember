@@ -11,6 +11,7 @@ class EmberService extends ChangeNotifier {
   BluetoothCharacteristic? _ledChar;
   BluetoothCharacteristic? _liquidLevelChar;
   BluetoothCharacteristic? _liquidStateChar;
+  BluetoothCharacteristic? _batteryChar;
   // ignore: unused_field
   BluetoothCharacteristic? _pushEventChar;
 
@@ -32,6 +33,13 @@ class EmberService extends ChangeNotifier {
   int? get liquidState => _liquidState;
   
   bool get isEmpty => _liquidState == 1; // LiquidState.EMPTY = 1
+
+  int? _batteryLevel;
+  int? get batteryLevel => _batteryLevel;
+
+  bool? _isCharging;
+  bool? get isCharging => _isCharging;
+
 
   StreamSubscription? _scanSubscription;
   StreamSubscription? _connectionSubscription;
@@ -205,6 +213,9 @@ class EmberService extends ChangeNotifier {
         } else if (charUuidStr == EmberConstants.pushEventCharUuid.toLowerCase()) {
           debugPrint("EmberService: Found Push Event Char (notifications)");
           _pushEventChar = characteristic;
+        } else if (charUuidStr == EmberConstants.batteryCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found Battery Char");
+          _batteryChar = characteristic;
         } else {
           debugPrint("EmberService: Skipping unknown Ember characteristic: ${characteristic.uuid}");
         }
@@ -228,6 +239,11 @@ class EmberService extends ChangeNotifier {
     // Then read current temperature
     if (_currentTempChar != null) {
       await _readCurrentTemp();
+    }
+    
+    // Read battery
+    if (_batteryChar != null) {
+      await _readBatteryLevel();
     }
   }
 
@@ -265,6 +281,14 @@ class EmberService extends ChangeNotifier {
                 debugPrint("EmberService: Cup is empty, turning off heat");
                 setTargetTemp(0);
               }
+            } else if (eventCode == 1) { // BATTERY_CHANGED
+              _readBatteryLevel();
+            } else if (eventCode == 2) { // CHARGER_CONNECTED
+              _isCharging = true;
+              _readBatteryLevel();
+            } else if (eventCode == 3) { // CHARGER_DISCONNECTED
+              _isCharging = false;
+              _readBatteryLevel();
             }
            // Add more event handlers as needed
          }
@@ -330,6 +354,23 @@ class EmberService extends ChangeNotifier {
     }
   }
 
+  Future<void> _readBatteryLevel() async {
+    if (_batteryChar == null) return;
+    try {
+      List<int> value = await _batteryChar!.read();
+      if (value.isNotEmpty) {
+        _batteryLevel = value[0];
+        if (value.length > 1) {
+          _isCharging = (value[1] == 1);
+        }
+        debugPrint("EmberService: Battery level: $_batteryLevel%, Charging: $_isCharging");
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("EmberService: Error reading battery level: $e");
+    }
+  }
+
   String _getLiquidStateName(int state) {
     const stateNames = {
       0: 'Standby',
@@ -388,6 +429,7 @@ class EmberService extends ChangeNotifier {
     _ledChar = null;
     _liquidLevelChar = null;
     _liquidStateChar = null;
+    _batteryChar = null;
     _pushEventChar = null;
     _connectionSubscription?.cancel();
     notifyListeners();

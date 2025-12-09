@@ -182,9 +182,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+
+
   Widget _buildTemperatureDisplay(EmberService service, SettingsService settings) {
     final tempCelsius = service.currentTemp ?? 0.0;
     final displayTemp = settings.displayTemp(tempCelsius);
+    final batteryLevel = service.batteryLevel;
+    final isCharging = service.isCharging == true;
     
     return Column(
       children: [
@@ -200,6 +204,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           "Current Temperature",
           style: TextStyle(color: Colors.white54, fontSize: 16),
         ),
+        if (batteryLevel != null) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isCharging ? Icons.battery_charging_full : Icons.battery_std,
+                color: batteryLevel < 20 ? Colors.redAccent : Colors.white70,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "$batteryLevel%",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
