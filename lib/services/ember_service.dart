@@ -280,8 +280,7 @@ class EmberService extends ChangeNotifier {
       
       debugPrint("EmberService: Subscribing to notifications for ${characteristic.uuid}...");
       await characteristic.setNotifyValue(true);
-      
-      characteristic.onValueReceived.listen((value) {
+            characteristic.onValueReceived.listen((value) async {
          if (value.isNotEmpty) {
            // PUSH_EVENT sends event codes indicating what changed
            int eventCode = value[0];
@@ -298,8 +297,9 @@ class EmberService extends ChangeNotifier {
             } else if (eventCode == 7) { // LIQUID_LEVEL_CHANGED
               _readLiquidLevel();
             } else if (eventCode == 8) { // LIQUID_STATE_CHANGED
-              _readLiquidState();
+              await _readLiquidState();
               // If cup becomes empty, turn off heat by setting target temp to 0
+              // Re-check isEmpty after the await to ensure we have the latest state
               if (isEmpty && _targetTemp != null && _targetTemp! > 0) {
                 debugPrint("EmberService: Cup is empty, turning off heat");
                 setTargetTemp(0);
