@@ -60,6 +60,43 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               gradient: AppTheme.backgroundGradient,
             ),
           ),
+
+          // Heating/Cooling Gradient Overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 1000),
+                curve: Curves.easeInOut,
+                opacity: emberService.isConnected ? 1.0 : 0.0, // Show when connected
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 1000),
+                  curve: Curves.easeInOut,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: (emberService.isHeating || emberService.isPerfect)
+                          ? [
+                              Colors.red.withValues(alpha: 0.4),
+                              AppTheme.emberOrange.withValues(alpha: 0.2),
+                              Colors.transparent,
+                            ]
+                          : [
+                              Colors.blue.withValues(alpha: 0.4),
+                              Colors.cyan.withValues(alpha: 0.2),
+                              Colors.transparent,
+                            ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           
           // Content
           SafeArea(
@@ -207,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           ),
         Text(
-          "${displayTemp.toStringAsFixed(1)}${settings.unitSymbol}",
+          "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.fahrenheit ? 0 : 1)}${settings.unitSymbol}",
           style: const TextStyle(
             fontSize: 80,
             fontWeight: FontWeight.w200,

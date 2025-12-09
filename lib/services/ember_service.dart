@@ -33,6 +33,8 @@ class EmberService extends ChangeNotifier {
   int? get liquidState => _liquidState;
   
   bool get isEmpty => _liquidState == 1; // LiquidState.EMPTY = 1
+  bool get isHeating => _liquidState == 5; // LiquidState.HEATING = 5
+  bool get isPerfect => _liquidState == 6; // LiquidState.PERFECT = 6
 
   int? _batteryLevel;
   int? get batteryLevel => _batteryLevel;
