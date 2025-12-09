@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsService()),
       ],
       child: MaterialApp(
-        title: 'Fix Ur Shit Ember',
+        title: 'FYS Ember',
         theme: AppTheme.darkTheme,
         home: const HomeScreen(),
         debugShowCheckedModeBanner: false,
