@@ -4,6 +4,8 @@ class EmberConstants {
   
   static const String currentTempCharUuid = "fc540002-236c-4c94-8fa9-944a3e5353fa";
   static const String targetTempCharUuid = "fc540003-236c-4c94-8fa9-944a3e5353fa";
+  static const String liquidLevelCharUuid = "fc540005-236c-4c94-8fa9-944a3e5353fa";
+  static const String liquidStateCharUuid = "fc540008-236c-4c94-8fa9-944a3e5353fa";
   static const String ledCharUuid = "fc540014-236c-4c94-8fa9-944a3e5353fa";
   static const String batteryCharUuid = "fc540007-236c-4c94-8fa9-944a3e5353fa";
   static const String pushEventCharUuid = "fc540012-236c-4c94-8fa9-944a3e5353fa"; // Notifications for temp/state changes

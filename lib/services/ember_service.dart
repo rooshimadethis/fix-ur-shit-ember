@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../utils/constants.dart';
@@ -10,6 +9,8 @@ class EmberService extends ChangeNotifier {
   BluetoothCharacteristic? _currentTempChar;
   BluetoothCharacteristic? _targetTempChar;
   BluetoothCharacteristic? _ledChar;
+  BluetoothCharacteristic? _liquidLevelChar;
+  BluetoothCharacteristic? _liquidStateChar;
   // ignore: unused_field
   BluetoothCharacteristic? _pushEventChar;
 
@@ -23,6 +24,14 @@ class EmberService extends ChangeNotifier {
 
   double? _targetTemp;
   double? get targetTemp => _targetTemp;
+
+  int? _liquidLevel;
+  int? get liquidLevel => _liquidLevel;
+
+  int? _liquidState; // 0=Standby, 1=Empty, 2=Filling, 3=Cold, 4=Cooling, 5=Heating, 6=Perfect, 7=Warm
+  int? get liquidState => _liquidState;
+  
+  bool get isEmpty => _liquidState == 1; // LiquidState.EMPTY = 1
 
   StreamSubscription? _scanSubscription;
   StreamSubscription? _connectionSubscription;
@@ -57,9 +66,9 @@ class EmberService extends ChangeNotifier {
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
         for (ScanResult result in results) {
           String name = result.device.platformName;
-          String localName = result.advertisementData.localName;
+          String advName = result.advertisementData.advName;
           
-          if (name.isEmpty) name = localName;
+          if (name.isEmpty) name = advName;
           
           debugPrint("EmberService: Found device: $name (${result.device.remoteId}) RSSI: ${result.rssi}");
           
@@ -187,6 +196,12 @@ class EmberService extends ChangeNotifier {
         } else if (charUuidStr == EmberConstants.ledCharUuid.toLowerCase()) {
           debugPrint("EmberService: Found LED Char");
           _ledChar = characteristic;
+        } else if (charUuidStr == EmberConstants.liquidLevelCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found Liquid Level Char");
+          _liquidLevelChar = characteristic;
+        } else if (charUuidStr == EmberConstants.liquidStateCharUuid.toLowerCase()) {
+          debugPrint("EmberService: Found Liquid State Char");
+          _liquidStateChar = characteristic;
         } else if (charUuidStr == EmberConstants.pushEventCharUuid.toLowerCase()) {
           debugPrint("EmberService: Found Push Event Char (notifications)");
           _pushEventChar = characteristic;
@@ -200,6 +215,14 @@ class EmberService extends ChangeNotifier {
     // Subscribe to push events FIRST (matching Python implementation order)
     if (_pushEventChar != null) {
       await _setupNotifications(_pushEventChar!);
+    }
+    
+    // Then read liquid state and level
+    if (_liquidStateChar != null) {
+      await _readLiquidState();
+    }
+    if (_liquidLevelChar != null) {
+      await _readLiquidLevel();
     }
     
     // Then read current temperature
@@ -229,12 +252,20 @@ class EmberService extends ChangeNotifier {
            // 1: BATTERY_CHANGED, 2: CHARGER_CONNECTED, 3: CHARGER_DISCONNECTED
            // 4: TARGET_TEMPERATURE_CHANGED, 5: DRINK_TEMPERATURE_CHANGED
            // 6: AUTH_INFO_NOT_FOUND, 7: LIQUID_LEVEL_CHANGED, 8: LIQUID_STATE_CHANGED
-           
-           if (eventCode == 5) { // DRINK_TEMPERATURE_CHANGED
-             _readCurrentTemp();
-           } else if (eventCode == 4) { // TARGET_TEMPERATURE_CHANGED
-             _readTargetTemp();
-           }
+                      if (eventCode == 5) { // DRINK_TEMPERATURE_CHANGED
+              _readCurrentTemp();
+            } else if (eventCode == 4) { // TARGET_TEMPERATURE_CHANGED
+              _readTargetTemp();
+            } else if (eventCode == 7) { // LIQUID_LEVEL_CHANGED
+              _readLiquidLevel();
+            } else if (eventCode == 8) { // LIQUID_STATE_CHANGED
+              _readLiquidState();
+              // If cup becomes empty, turn off heat by setting target temp to 0
+              if (isEmpty && _targetTemp != null && _targetTemp! > 0) {
+                debugPrint("EmberService: Cup is empty, turning off heat");
+                setTargetTemp(0);
+              }
+            }
            // Add more event handlers as needed
          }
       });
@@ -270,8 +301,59 @@ class EmberService extends ChangeNotifier {
     }
   }
 
+  Future<void> _readLiquidLevel() async {
+    if (_liquidLevelChar == null) return;
+    try {
+      List<int> value = await _liquidLevelChar!.read();
+      if (value.isNotEmpty) {
+        _liquidLevel = value[0] | (value.length > 1 ? value[1] << 8 : 0);
+        debugPrint("EmberService: Liquid level: $_liquidLevel");
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("EmberService: Error reading liquid level: $e");
+    }
+  }
+
+  Future<void> _readLiquidState() async {
+    if (_liquidStateChar == null) return;
+    try {
+      List<int> value = await _liquidStateChar!.read();
+      if (value.isNotEmpty) {
+        _liquidState = value[0];
+        String stateName = _getLiquidStateName(_liquidState!);
+        debugPrint("EmberService: Liquid state: $_liquidState ($stateName)");
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("EmberService: Error reading liquid state: $e");
+    }
+  }
+
+  String _getLiquidStateName(int state) {
+    const stateNames = {
+      0: 'Standby',
+      1: 'Empty',
+      2: 'Filling',
+      3: 'Cold (No control)',
+      4: 'Cooling',
+      5: 'Heating',
+      6: 'Perfect',
+      7: 'Warm (No control)',
+    };
+    return stateNames[state] ?? 'Unknown';
+  }
+
   Future<void> setTargetTemp(double temp) async {
     if (_targetTempChar == null) return;
+    
+    // Safety check: Don't allow temperature updates if cup is empty
+    if (isEmpty) {
+      debugPrint("EmberService: Cannot set temperature - cup is empty!");
+      // Force target temp to 0 (off) when empty
+      temp = 0;
+    }
+    
     try {
       int raw = (temp / 0.01).round();
       List<int> bytes = [raw & 0xFF, (raw >> 8) & 0xFF];
@@ -304,6 +386,8 @@ class EmberService extends ChangeNotifier {
     _currentTempChar = null;
     _targetTempChar = null;
     _ledChar = null;
+    _liquidLevelChar = null;
+    _liquidStateChar = null;
     _pushEventChar = null;
     _connectionSubscription?.cancel();
     notifyListeners();
