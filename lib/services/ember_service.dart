@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../utils/constants.dart';
@@ -56,16 +57,20 @@ class EmberService extends ChangeNotifier {
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
         for (ScanResult result in results) {
           String name = result.device.platformName;
+          String localName = result.advertisementData.localName;
+          
+          if (name.isEmpty) name = localName;
+          
           debugPrint("EmberService: Found device: $name (${result.device.remoteId}) RSSI: ${result.rssi}");
           
           if (name.toLowerCase().contains("ember")) {
              debugPrint("EmberService: FOUND EMBER! Connecting to $name...");
-             connect(result.device);
-             FlutterBluePlus.stopScan();
+             _connectToFoundDevice(result.device);
              break;
           }
         }
       });
+      
     } catch (e) {
       debugPrint("EmberService: Error scanning: $e");
       _isScanning = false;
@@ -81,6 +86,14 @@ class EmberService extends ChangeNotifier {
     });
   }
 
+  Future<void> _connectToFoundDevice(BluetoothDevice device) async {
+    // Stop scanning before connecting is crucial on Android
+    await FlutterBluePlus.stopScan();
+    _isScanning = false;
+    notifyListeners();
+    connect(device);
+  }
+
   void stopScan() {
     FlutterBluePlus.stopScan();
     _scanSubscription?.cancel();
@@ -88,9 +101,19 @@ class EmberService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _isConnecting = false;
+
   Future<void> connect(BluetoothDevice device) async {
+    if (_isConnecting || _connectedDevice != null) return;
+    _isConnecting = true;
+    
     debugPrint("EmberService: Attempting to connect to ${device.remoteId}...");
     try {
+      // mtu: null prevents the auto-request of 512 bytes which causes Error 133 on some Android phones/devices
+      await device.connect(autoConnect: false, mtu: null);
+      debugPrint("EmberService: Connected!");
+      _connectedDevice = device;
+      
       // mtu: null prevents the auto-request of 512 bytes which causes Error 133 on some Android phones/devices
       await device.connect(autoConnect: false, mtu: null);
       debugPrint("EmberService: Connected!");
@@ -100,11 +123,14 @@ class EmberService extends ChangeNotifier {
       _connectionSubscription = device.connectionState.listen((state) {
         debugPrint("EmberService: Connection state changed to: $state");
         if (state == BluetoothConnectionState.disconnected) {
-          disconnect();
+            // Optional: attempt auto-reconnect logic here if desired, 
+            // or just notify UI.
+            debugPrint("EmberService: Device disconnected.");
+            disconnect(); 
         }
       });
 
-      // Discover services immediately - don't wait too long or we'll get link supervision timeout
+      // Discover services immediately
       debugPrint("EmberService: Discovering services...");
       try {
         await _discoverServices(device);
@@ -126,6 +152,8 @@ class EmberService extends ChangeNotifier {
     } catch (e) {
       debugPrint("EmberService: Error connecting: $e");
       disconnect();
+    } finally {
+      _isConnecting = false;
     }
   }
 
