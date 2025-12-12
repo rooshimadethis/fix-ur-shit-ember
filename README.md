@@ -2,7 +2,7 @@
 
 # Fix Ur Shit Ember
 
-A Modern, Feature-Rich Control App for Ember Mugs, built with Flutter.
+A functional replacement app for the Ember Mug, built with Flutter.
 
 <p align="center">
   <img src="on.jpg" width="45%" alt="Heating On" />
@@ -11,27 +11,25 @@ A Modern, Feature-Rich Control App for Ember Mugs, built with Flutter.
 
 ## Features
 
-*   **Smart Connectivity**
-    *   **Auto-Connect:** Automatically finds and connects to your Ember Mug on launch.
-    *   **Robust BLE:** Enhanced Bluetooth Low Energy handling for stable connections.
-    *   **Auto-Reconnect:** Intelligent logic to recover lost connections.
+### Connection
+*   **Bluetooth Low Energy (BLE)**: Scans for and connects to Ember Mugs.
+*   **Auto-Scan**: Attempts to find the mug automatically on app startup.
 
-*   **Temperature Control**
-    *   **Live Monitoring:** Real-time display of current liquid temperature.
-    *   **Precise Control:** Easy-to-use slider to set your perfect drinking temperature.
-    *   **Heat Toggle:** One-tap button to turn heating on or off instantly.
-    *   **Smart Memory:** Remembers your last used target temperature.
+### Temperature Control
+*   **Read/Write**: View current liquid temperature and set a target temperature.
+*   **Range**: Supports temperature setting between 50°C - 65°C (122°F - 149°F).
+*   **Heating Toggle**: Manually turn the heater on or off. The app remembers the last used target temperature when turning heating back on.
+*   **Unit Support**: Switch between Celsius and Fahrenheit.
 
-*   **Intelligent Features**
-    *   **Empty Cup Detection:** Automatically turns off heating when the cup is empty to save battery.
-    *   **Battery Status:** View real-time battery percentage and charging status.
-    *   **Live Notifications:** persistent notification showing current temperature and status (Heading, Off, Perfect) so you don't have to open the app.
-    *   **LED Customization:** Change the LED color on your mug to match your mood.
+### Notifications & Indicators
+*   **Status Notification**: A persistent notification displays the current temperature, battery level, and heating status (e.g., "Heating", "Cooling", "Off") in the system tray.
+*   **Drink Ready Alert**: Sends a specific "Drink Ready" notification when the liquid reaches the target temperature.
+*   **Visual Indicator**: The Mug's LED pulses green for 60 seconds when the "Perfect" temperature is reached to provide a visual cue.
 
-*   **Premium Design**
-    *   **Modern Aesthetics:** Beautiful gradients and glassmorphism UI.
-    *   **Paper Texture:** Subtle texture overlay for a unique, organic feel.
-    *   **Visual Feedback:** Dynamic color changes based on heating state (Orange for heating, Blue for cooling/off).
+### Tools
+*   **Steep Timer**: A built-in timer (default 5 minutes) for tea steeping. Triggers a notification when the timer expires.
+*   **LED Color Picker**: Change the Ember Mug's LED indicator color.
+*   **Liquid Level**: Monitors liquid level to detect if the mug is empty. Automatically disables heating when empty to conserve battery.
 
 ## Disclaimer
 
