@@ -55,6 +55,10 @@ class EmberService extends ChangeNotifier {
 
   StreamSubscription? _scanSubscription;
   StreamSubscription? _connectionSubscription;
+  
+  Color _userLedColor = const Color(0xFFFF0000); // Track user's preferred color
+  Timer? _perfectModeTimer; // Timer for the green pulsing loop
+  bool _hasNotifiedPerfect = false; // Flag to prevent repeated notifications/loop starts
 
   void startScan() async {
     if (_isScanning) return;
@@ -257,6 +261,11 @@ class EmberService extends ChangeNotifier {
     if (_batteryChar != null) {
       await _readBatteryLevel();
     }
+    
+    // Read LED Colour
+    if (_ledChar != null) {
+      await _readLedColor();
+    }
 
     // Restore saved target temperature
     if (_targetTempChar != null) {
@@ -359,6 +368,10 @@ class EmberService extends ChangeNotifier {
       if (value.isNotEmpty) {
         _liquidLevel = value[0] | (value.length > 1 ? value[1] << 8 : 0);
         debugPrint("EmberService: Liquid level: $_liquidLevel");
+        
+        // Proxy for "Motion Detection" removed per user request for a fixed 1-minute timer.
+        // Previously we stopped the loop here on any liquid level change.
+        
         notifyListeners();
       }
     } catch (e) {
@@ -373,12 +386,32 @@ class EmberService extends ChangeNotifier {
       if (value.isNotEmpty) {
         _liquidState = value[0];
         
+        // Reset flag if Empty (1) or Filling (2)
+        if (_liquidState == 1 || _liquidState == 2) {
+             _hasNotifiedPerfect = false;
+        }
+
         // Trigger notification if we transitioned from Heating(5) or Cooling(4) to Perfect(6)
+        // And haven't notified yet for this session/cycle
         if (_liquidState == 6 && (_lastLiquidState == 4 || _lastLiquidState == 5)) {
-             debugPrint("EmberService: Drink is now perfect!");
-             if (_currentTemp != null) {
-                 NotificationService().showDrinkReadyNotification(_currentTemp!);
+             if (!_hasNotifiedPerfect) {
+                 debugPrint("EmberService: Drink is now perfect!");
+                 if (_currentTemp != null) {
+                     NotificationService().showDrinkReadyNotification(_currentTemp!);
+                 }
+                 // Start the Green Light Loop
+                 _startPerfectModeLoop();
+                 _hasNotifiedPerfect = true;
              }
+        } 
+        
+        // Stop Loop if we enter a state that isn't actively maintaining temp (Perfect/Heating/Cooling)
+        // e.g. Empty, Standby, Cold... 
+        // Note: We allow Heating(5) and Cooling(4) to persist the loop to handle minor fluctuations.
+        if (_liquidState != 6 && _liquidState != 5 && _liquidState != 4) {
+             _stopPerfectModeLoop();
+             // If we stopped the loop because of a state change (e.g. Empty), we should probably reset the flag?
+             // Actually, the Empty check above handles the reset.
         }
         _lastLiquidState = _liquidState;
 
@@ -466,6 +499,10 @@ class EmberService extends ChangeNotifier {
     // Safety check removed
     
     try {
+      // New target temp means new cycle, reset notification flag
+      _hasNotifiedPerfect = false;
+      _stopPerfectModeLoop();
+      
       int raw = (temp / 0.01).round();
       List<int> bytes = [raw & 0xFF, (raw >> 8) & 0xFF];
       await _targetTempChar!.write(bytes);
@@ -524,8 +561,63 @@ class EmberService extends ChangeNotifier {
         (color.a * 255).round()
       ];
       await _ledChar!.write(bytes);
+      // Update our local tracker if this was a user action (timer not active)
+      if (_perfectModeTimer == null || !_perfectModeTimer!.isActive) {
+          _userLedColor = color;
+      }
     } catch (e) {
       debugPrint("Error setting LED color: $e");
+    }
+  }
+  
+  Future<void> _readLedColor() async {
+    if (_ledChar == null) return;
+    try {
+      List<int> value = await _ledChar!.read();
+      if (value.length >= 4) {
+         _userLedColor = Color.fromARGB(value[3], value[0], value[1], value[2]);
+         debugPrint("EmberService: Read LED color: $_userLedColor");
+      } else if (value.length == 3) {
+         _userLedColor = Color.fromARGB(255, value[0], value[1], value[2]);
+         debugPrint("EmberService: Read LED color (RGB): $_userLedColor");
+      }
+    } catch (e) {
+      debugPrint("EmberService: Error reading LED color: $e");
+    }
+  }
+
+  void _startPerfectModeLoop() {
+    debugPrint("EmberService: Starting Perfect Mode Green Loop (1 minute timeout)");
+    _perfectModeTimer?.cancel();
+    int ticks = 0;
+    _perfectModeTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+       ticks++;
+       if (ticks >= 60) {
+          debugPrint("EmberService: Perfect Mode Green Loop timed out (60s). Stopping.");
+          _stopPerfectModeLoop();
+          return;
+       }
+       
+       if (_ledChar != null) {
+           // Send Green
+           // RGBA for Green. Using 0 alpha just in case, or 255. Python uses RGBA.
+           // Colors.green is 0xFF4CAF50. Let's use pure green 0xFF00FF00
+           List<int> bytes = [0, 255, 0, 255]; 
+           try {
+             await _ledChar!.write(bytes);
+           } catch(e) {
+             debugPrint("EmberService: Error sending green light: $e");
+           }
+       }
+    });
+  }
+  
+  void _stopPerfectModeLoop() {
+    if (_perfectModeTimer != null && _perfectModeTimer!.isActive) {
+        debugPrint("EmberService: Stopping Perfect Mode Green Loop. Restoring user color.");
+        _perfectModeTimer?.cancel();
+        // Restore user color
+        setLedColor(_userLedColor);
     }
   }
 
@@ -538,8 +630,9 @@ class EmberService extends ChangeNotifier {
     _liquidLevelChar = null;
     _liquidStateChar = null;
     _batteryChar = null;
-    _pushEventChar = null;
+
     _connectionSubscription?.cancel();
+    _perfectModeTimer?.cancel();
     NotificationService().cancel();
     notifyListeners();
   }
