@@ -8,6 +8,7 @@ import '../services/ember_service.dart';
 import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
 import 'settings_screen.dart';
+import 'widgets/steep_timer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -163,6 +164,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                      _buildTemperatureDisplay(emberService, settingsService),
                      const SizedBox(height: 40),
                      _buildControls(emberService, settingsService),
+                     if (settingsService.showSteepTimer) ...[
+                       const SizedBox(height: 24),
+                       const SteepTimer(),
+                     ],
                    ],
                    
                    const Spacer(),

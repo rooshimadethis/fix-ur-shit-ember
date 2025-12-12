@@ -98,7 +98,30 @@ class NotificationService {
     );
   }
   
+  Future<void> showTimerFinishedNotification() async {
+      const AndroidNotificationDetails androidNotificationDetails =
+          AndroidNotificationDetails(
+        'ember_timer_updates',
+        'Steep Timer',
+        channelDescription: 'Notifications for the steep timer',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+      );
+
+      const NotificationDetails notificationDetails =
+          NotificationDetails(android: androidNotificationDetails);
+
+      await flutterLocalNotificationsPlugin.show(
+        89,
+        'Timer Finished',
+        'Your steep timer is done!',
+        notificationDetails,
+      );
+  }
+
   Future<void> cancel() async {
       await flutterLocalNotificationsPlugin.cancel(88);
+      await flutterLocalNotificationsPlugin.cancel(89);
   }
 }

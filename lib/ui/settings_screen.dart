@@ -79,6 +79,28 @@ class SettingsScreen extends StatelessWidget {
                         "Celsius (°C)",
                         "Metric - 50°C to 65°C",
                       ),
+
+                      const SizedBox(height: 32),
+                      const Text(
+                        "Interface",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildSwitchOption(
+                        context,
+                        "Show Steep Timer",
+                        "Display a timer at the bottom of the home screen",
+                        settingsService.showSteepTimer,
+                        (val) {
+                          HapticFeedback.mediumImpact();
+                          settingsService.setShowSteepTimer(val);
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -86,6 +108,64 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchOption(
+    BuildContext context,
+    String title,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white60,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                if (states.contains(WidgetState.selected)) {
+                    return AppTheme.emberOrange;
+                }
+                return null;
+            }),
+            activeTrackColor: AppTheme.emberOrange.withValues(alpha: 0.3),
+          ),
+        ],
       ),
     );
   }

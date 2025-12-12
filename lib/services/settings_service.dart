@@ -8,7 +8,15 @@ enum TemperatureUnit {
 
 class SettingsService extends ChangeNotifier {
   static const String tempUnitKey = 'temperature_unit';
-  
+  static const String showTimerKey = 'show_steep_timer';
+  static const String timerDurationKey = 'steep_timer_duration';
+
+  bool _showSteepTimer = true;
+  bool get showSteepTimer => _showSteepTimer;
+
+  int _steepTimerDuration = 300; // Default 5 minutes
+  int get steepTimerDuration => _steepTimerDuration;
+
   TemperatureUnit _temperatureUnit = TemperatureUnit.fahrenheit; // Default to Fahrenheit
   TemperatureUnit get temperatureUnit => _temperatureUnit;
   
@@ -28,9 +36,26 @@ class SettingsService extends ChangeNotifier {
           ? TemperatureUnit.celsius 
           : TemperatureUnit.fahrenheit;
     }
+
+    _showSteepTimer = prefs.getBool(showTimerKey) ?? true;
+    _steepTimerDuration = prefs.getInt(timerDurationKey) ?? 300;
     
     _isInitialized = true;
     notifyListeners();
+  }
+
+  Future<void> setShowSteepTimer(bool value) async {
+    _showSteepTimer = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(showTimerKey, value);
+  }
+
+  Future<void> setSteepTimerDuration(int seconds) async {
+    _steepTimerDuration = seconds;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(timerDurationKey, seconds);
   }
 
   Future<void> setTemperatureUnit(TemperatureUnit unit) async {
