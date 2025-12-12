@@ -1,4 +1,5 @@
 import 'dart:ui';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -401,6 +402,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 style: TextStyle(color: isHeatingOn ? Colors.white38 : Colors.white12)),
             ],
           ),
+          const SizedBox(height: 20),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,

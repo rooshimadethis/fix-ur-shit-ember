@@ -120,6 +120,40 @@ class NotificationService {
       );
   }
 
+  Future<void> showDrinkReadyNotification(double tempCelsius) async {
+    final prefs = await SharedPreferences.getInstance();
+    final unitString = prefs.getString(SettingsService.tempUnitKey);
+    final isFahrenheit = unitString != 'celsius'; // Default to Fahrenheit
+
+    double displayTemp = tempCelsius;
+    String unitSymbol = '°C';
+
+    if (isFahrenheit) {
+      displayTemp = (tempCelsius * 9 / 5) + 32;
+      unitSymbol = '°F';
+    }
+
+       const AndroidNotificationDetails androidNotificationDetails =
+          AndroidNotificationDetails(
+        'ember_drink_ready',
+        'Drink Ready',
+        channelDescription: 'Notifications when your drink reaches strict temperature',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+      );
+
+      const NotificationDetails notificationDetails =
+          NotificationDetails(android: androidNotificationDetails);
+
+      await flutterLocalNotificationsPlugin.show(
+        90,
+        'Drink Ready!',
+        'Your beverage has reached ${displayTemp.toStringAsFixed(0)}$unitSymbol',
+        notificationDetails,
+      );
+  }
+
   Future<void> cancel() async {
       await flutterLocalNotificationsPlugin.cancel(88);
       await flutterLocalNotificationsPlugin.cancel(89);

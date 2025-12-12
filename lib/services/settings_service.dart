@@ -9,7 +9,9 @@ enum TemperatureUnit {
 class SettingsService extends ChangeNotifier {
   static const String tempUnitKey = 'temperature_unit';
   static const String showTimerKey = 'show_steep_timer';
+
   static const String timerDurationKey = 'steep_timer_duration';
+  static const String ledColorKey = 'led_color';
 
   bool _showSteepTimer = true;
   bool get showSteepTimer => _showSteepTimer;
@@ -19,6 +21,9 @@ class SettingsService extends ChangeNotifier {
 
   TemperatureUnit _temperatureUnit = TemperatureUnit.fahrenheit; // Default to Fahrenheit
   TemperatureUnit get temperatureUnit => _temperatureUnit;
+
+  Color _ledColor = const Color(0xFFFF0000); // Default to Red
+  Color get ledColor => _ledColor;
   
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -40,6 +45,13 @@ class SettingsService extends ChangeNotifier {
     _showSteepTimer = prefs.getBool(showTimerKey) ?? true;
     _steepTimerDuration = prefs.getInt(timerDurationKey) ?? 300;
     
+
+    
+    final int? colorValue = prefs.getInt(ledColorKey);
+    if (colorValue != null) {
+      _ledColor = Color(colorValue);
+    }
+
     _isInitialized = true;
     notifyListeners();
   }
@@ -56,6 +68,13 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(timerDurationKey, seconds);
+  }
+
+  Future<void> setLedColor(Color color) async {
+    _ledColor = color;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(ledColorKey, color.toARGB32());
   }
 
   Future<void> setTemperatureUnit(TemperatureUnit unit) async {

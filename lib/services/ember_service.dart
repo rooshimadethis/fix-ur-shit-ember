@@ -39,6 +39,7 @@ class EmberService extends ChangeNotifier {
   int? get liquidLevel => _liquidLevel;
 
   int? _liquidState; // 0=Standby, 1=Empty, 2=Filling, 3=Cold, 4=Cooling, 5=Heating, 6=Perfect, 7=Warm
+  int? _lastLiquidState; // To track transitions
   int? get liquidState => _liquidState;
   
   bool get isEmpty => _liquidState == 1; // LiquidState.EMPTY = 1
@@ -371,6 +372,16 @@ class EmberService extends ChangeNotifier {
       List<int> value = await _liquidStateChar!.read();
       if (value.isNotEmpty) {
         _liquidState = value[0];
+        
+        // Trigger notification if we transitioned from Heating(5) or Cooling(4) to Perfect(6)
+        if (_liquidState == 6 && (_lastLiquidState == 4 || _lastLiquidState == 5)) {
+             debugPrint("EmberService: Drink is now perfect!");
+             if (_currentTemp != null) {
+                 NotificationService().showDrinkReadyNotification(_currentTemp!);
+             }
+        }
+        _lastLiquidState = _liquidState;
+
         String stateName = _getLiquidStateName(_liquidState!);
         debugPrint("EmberService: Liquid state: $_liquidState ($stateName)");
         
