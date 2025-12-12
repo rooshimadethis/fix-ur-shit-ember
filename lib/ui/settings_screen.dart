@@ -101,6 +101,17 @@ class SettingsScreen extends StatelessWidget {
                           settingsService.setShowSteepTimer(val);
                         },
                       ),
+                      const SizedBox(height: 12),
+                      _buildSwitchOption(
+                        context,
+                        "Green Light Notification",
+                        "Pulse the mug's LED green for 60s when drink is ready",
+                        settingsService.enableGreenLoop,
+                        (val) {
+                          HapticFeedback.mediumImpact();
+                          settingsService.setEnableGreenLoop(val);
+                        },
+                      ),
                     ],
                   ),
                 ),

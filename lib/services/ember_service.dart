@@ -4,6 +4,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 import 'notification_service.dart';
+import 'settings_service.dart';
 
 class EmberService extends ChangeNotifier {
   BluetoothDevice? _connectedDevice;
@@ -586,7 +587,16 @@ class EmberService extends ChangeNotifier {
     }
   }
 
-  void _startPerfectModeLoop() {
+  Future<void> _startPerfectModeLoop() async {
+    // Check if user has enabled this feature
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(SettingsService.enableGreenLoopKey) ?? true;
+    
+    if (!enabled) {
+      debugPrint("EmberService: Perfect Mode Green Loop is disabled in settings. Skipping.");
+      return;
+    }
+
     debugPrint("EmberService: Starting Perfect Mode Green Loop (1 minute timeout)");
     _perfectModeTimer?.cancel();
     int ticks = 0;
