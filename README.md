@@ -27,7 +27,9 @@ A functional replacement app for the Ember Mug, built with Flutter.
 *   **Visual Indicator**: The Mug's LED pulses green for 60 seconds when the "Perfect" temperature is reached to provide a visual cue.
 
 ### Tools
-*   **Steep Timer**: A built-in timer (default 5 minutes) for tea steeping. Triggers a notification when the timer expires.
+*   **Steep Timer**: A smart timer (default 5 minutes) for tea steeping. 
+    *   **Background Support**: Uses system alarms to ensure you get notified even if the app is closed.
+    *   **Persistence**: Saves your timer state so it resumes correctly if you restart the app.
 *   **LED Color Picker**: Change the Ember Mug's LED indicator color.
 *   **Liquid Level**: Monitors liquid level to detect if the mug is empty. Automatically disables heating when empty to conserve battery.
 
