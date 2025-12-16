@@ -184,12 +184,13 @@ class NotificationService {
   Future<void> _showTimerNotification(String body) async {
     const AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
-          'ember_timer_updates',
+          'ember_timer_v2',
           'Steep Timer',
           channelDescription: 'Notifications for the steep timer',
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
+          enableVibration: true,
         );
 
     const NotificationDetails notificationDetails = NotificationDetails(
