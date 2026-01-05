@@ -261,7 +261,7 @@ class _SteepTimerState extends State<SteepTimer>
         children: [
           const Text(
             "Steep Timer",
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: Colors.white70, fontSize: 18),
           ),
           const SizedBox(height: 12),
           Row(
@@ -540,7 +540,7 @@ class _TimePickerDialogState extends State<_TimePickerDialog> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
+            style: const TextStyle(color: Colors.white54, fontSize: 14),
           ),
         ],
       ),

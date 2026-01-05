@@ -409,7 +409,7 @@ class _HomeScreenState extends State<HomeScreen>
             "Current Temperature",
             style: TextStyle(
               color: Colors.white70,
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -584,12 +584,14 @@ class _HomeScreenState extends State<HomeScreen>
                 "${settings.minTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
                 style: TextStyle(
                   color: isHeatingOn ? Colors.white60 : Colors.white38,
+                  fontSize: 16,
                 ),
               ),
               Text(
                 "${settings.maxTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
                 style: TextStyle(
                   color: isHeatingOn ? Colors.white60 : Colors.white38,
+                  fontSize: 16,
                 ),
               ),
             ],
@@ -597,7 +599,7 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 32),
           Row(
             children: [
-              Expanded(child: _buildColorButton(service, isHeatingOn)),
+              Expanded(child: _buildColorButton(service, isReady)),
               const SizedBox(width: 12),
               Expanded(child: _buildPowerButton(service, enabled: isReady)),
             ],
@@ -737,7 +739,7 @@ class _HomeScreenState extends State<HomeScreen>
                       name.toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white70,
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1,
                       ),
@@ -749,7 +751,7 @@ class _HomeScreenState extends State<HomeScreen>
                       "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -791,6 +793,7 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (context, setState) {
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1E1E),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
@@ -802,100 +805,107 @@ class _HomeScreenState extends State<HomeScreen>
                 "Edit Preset",
                 style: TextStyle(color: Colors.white),
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 60,
-                        child: TextField(
-                          controller: iconController,
-                          textAlign: TextAlign.center,
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 60,
+                          child: TextField(
+                            controller: iconController,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                            ),
+                            maxLength: 1,
+                            decoration: InputDecoration(
+                              counterText: "",
+                              labelText: "Icon",
+                              labelStyle: const TextStyle(
+                                color: Colors.white70,
+                              ),
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              focusedBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: AppTheme.emberOrange,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextField(
+                            controller: nameController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: "Preset Name",
+                              labelStyle: const TextStyle(
+                                color: Colors.white70,
+                              ),
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              focusedBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: AppTheme.emberOrange,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Temperature",
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                        ),
+                        Text(
+                          "${currentDisplay.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 24,
-                          ),
-                          maxLength: 1,
-                          decoration: InputDecoration(
-                            counterText: "",
-                            labelText: "Icon",
-                            labelStyle: const TextStyle(color: Colors.white70),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            focusedBorder: const UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: AppTheme.emberOrange,
-                              ),
-                            ),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: nameController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: "Preset Name",
-                            labelStyle: const TextStyle(color: Colors.white70),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            focusedBorder: const UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: AppTheme.emberOrange,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Temperature",
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      Text(
-                        "${currentDisplay.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: AppTheme.emberOrange,
-                      thumbColor: Colors.white,
+                      ],
                     ),
-                    child: Slider(
-                      value: currentDisplay.clamp(minDisplay, maxDisplay),
-                      min: minDisplay,
-                      max: maxDisplay,
-                      divisions:
-                          settings.temperatureUnit == TemperatureUnit.celsius
-                          ? ((maxDisplay - minDisplay) * 2).toInt()
-                          : (maxDisplay - minDisplay).toInt(),
-                      onChanged: (val) {
-                        setState(() {
-                          currentDisplay = val;
-                        });
-                      },
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: AppTheme.emberOrange,
+                        thumbColor: Colors.white,
+                      ),
+                      child: Slider(
+                        value: currentDisplay.clamp(minDisplay, maxDisplay),
+                        min: minDisplay,
+                        max: maxDisplay,
+                        divisions:
+                            settings.temperatureUnit == TemperatureUnit.celsius
+                            ? ((maxDisplay - minDisplay) * 2).toInt()
+                            : (maxDisplay - minDisplay).toInt(),
+                        onChanged: (val) {
+                          setState(() {
+                            currentDisplay = val;
+                          });
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
