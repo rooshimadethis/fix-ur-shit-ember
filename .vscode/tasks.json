@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Launch iOS Simulator",
+            "type": "shell",
+            "command": "open -a Simulator || flutter emulators --launch apple_ios_simulator",
+            "presentation": {
+                "reveal": "silent"
+            }
+        },
+        {
+            "label": "Launch Pixel 9",
+            "type": "shell",
+            "command": "pgrep -f Pixel_9 > /dev/null || (flutter emulators --launch Pixel_9 > /dev/null 2>&1 &)",
+            "presentation": {
+                "reveal": "silent"
+            }
+        },
+        {
+            "label": "Launch Pixel 9 Pro Fold (2)",
+            "type": "shell",
+            "command": "pgrep -f Pixel_9_Pro_Fold_2 > /dev/null || (flutter emulators --launch Pixel_9_Pro_Fold_2 > /dev/null 2>&1 &)",
+            "presentation": {
+                "reveal": "silent"
+            }
+        }
+    ]
+}

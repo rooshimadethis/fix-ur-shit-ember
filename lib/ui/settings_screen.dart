@@ -13,9 +13,7 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
           child: Column(
             children: [
@@ -44,7 +42,7 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Settings Content
               Expanded(
                 child: Padding(
@@ -62,7 +60,7 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Temperature Unit Options
                       _buildUnitOption(
                         context,
@@ -105,7 +103,7 @@ class SettingsScreen extends StatelessWidget {
                       _buildSwitchOption(
                         context,
                         "Green Light Notification",
-                        "Pulse the mug's LED green for 60s when drink is ready",
+                        "Pulse the mug's LED green for 60s when the drink reaches the desired temperature",
                         settingsService.enableGreenLoop,
                         (val) {
                           HapticFeedback.mediumImpact();
@@ -157,10 +155,7 @@ class SettingsScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.white60,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Colors.white60),
                 ),
               ],
             ),
@@ -169,10 +164,10 @@ class SettingsScreen extends StatelessWidget {
             value: value,
             onChanged: onChanged,
             thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
-                if (states.contains(WidgetState.selected)) {
-                    return AppTheme.emberOrange;
-                }
-                return null;
+              if (states.contains(WidgetState.selected)) {
+                return AppTheme.emberOrange;
+              }
+              return null;
             }),
             activeTrackColor: AppTheme.emberOrange.withValues(alpha: 0.3),
           ),
@@ -189,7 +184,7 @@ class SettingsScreen extends StatelessWidget {
     String subtitle,
   ) {
     final isSelected = service.temperatureUnit == unit;
-    
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
@@ -198,13 +193,13 @@ class SettingsScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected 
+          color: isSelected
               ? AppTheme.emberOrange.withValues(alpha: 0.2)
               : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected 
-                ? AppTheme.emberOrange 
+            color: isSelected
+                ? AppTheme.emberOrange
                 : Colors.white.withValues(alpha: 0.1),
             width: isSelected ? 2 : 1,
           ),
@@ -212,7 +207,9 @@ class SettingsScreen extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
               color: isSelected ? AppTheme.emberOrange : Colors.white38,
             ),
             const SizedBox(width: 16),
