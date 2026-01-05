@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 enum TemperatureUnit { celsius, fahrenheit }
 
@@ -13,6 +14,21 @@ class SettingsService extends ChangeNotifier {
   static const String enableGreenLoopKey = 'enable_green_loop';
   static const String showLiquidAnimationKey = 'show_liquid_animation';
   static const String showDebugControlsKey = 'show_debug_controls';
+  static const String presetsKey = 'temperature_presets';
+  static const String presetCountKey = 'preset_count';
+
+  static const List<Map<String, dynamic>> defaultPresets = [
+    {'name': 'Coffee', 'icon': '☕', 'temp': 57.0},
+    {'name': 'Tea', 'icon': '🍵', 'temp': 60.0},
+    {'name': 'Hot Choc', 'icon': '🍫', 'temp': 55.0},
+    {'name': 'Latte', 'icon': '🥛', 'temp': 52.0},
+  ];
+
+  List<Map<String, dynamic>> _presets = List.from(defaultPresets);
+  List<Map<String, dynamic>> get presets => _presets;
+
+  int _presetCount = 2;
+  int get presetCount => _presetCount;
 
   bool _showSteepTimer = true;
   bool get showSteepTimer => _showSteepTimer;
@@ -58,6 +74,20 @@ class SettingsService extends ChangeNotifier {
 
     _showSteepTimer = prefs.getBool(showTimerKey) ?? true;
     _steepTimerDuration = prefs.getInt(timerDurationKey) ?? 300;
+
+    _presetCount = prefs.getInt(presetCountKey) ?? 2;
+    final presetsString = prefs.getString(presetsKey);
+    if (presetsString != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(presetsString);
+        _presets = decoded.cast<Map<String, dynamic>>();
+      } catch (e) {
+        debugPrint("Error loading presets: $e");
+        _presets = List.from(defaultPresets);
+      }
+    } else {
+      _presets = List.from(defaultPresets);
+    }
 
     final int? targetTimeMillis = prefs.getInt(timerTargetTimeKey);
     if (targetTimeMillis != null) {
@@ -130,6 +160,27 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(showDebugControlsKey, value);
+  }
+
+  Future<void> setPresetCount(int value) async {
+    _presetCount = value.clamp(1, 4);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(presetCountKey, _presetCount);
+  }
+
+  Future<void> updatePreset(
+    int index,
+    String name,
+    String icon,
+    double tempCelsius,
+  ) async {
+    if (index >= 0 && index < _presets.length) {
+      _presets[index] = {'name': name, 'icon': icon, 'temp': tempCelsius};
+      notifyListeners();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(presetsKey, jsonEncode(_presets));
+    }
   }
 
   Future<void> setTemperatureUnit(TemperatureUnit unit) async {

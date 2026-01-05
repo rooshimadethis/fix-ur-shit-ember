@@ -46,87 +46,44 @@ class SettingsScreen extends StatelessWidget {
 
               // Settings Content
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Temperature Unit",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
-                          letterSpacing: 1,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Temperature Unit",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white70,
+                            letterSpacing: 1,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                      // Temperature Unit Options
-                      _buildUnitOption(
-                        context,
-                        settingsService,
-                        TemperatureUnit.fahrenheit,
-                        "Fahrenheit (°F)",
-                        "Default - 122°F to 149°F",
-                      ),
-                      const SizedBox(height: 12),
-                      _buildUnitOption(
-                        context,
-                        settingsService,
-                        TemperatureUnit.celsius,
-                        "Celsius (°C)",
-                        "Metric - 50°C to 65°C",
-                      ),
-
-                      const SizedBox(height: 32),
-                      const Text(
-                        "Interface",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
-                          letterSpacing: 1,
+                        // Temperature Unit Options
+                        _buildUnitOption(
+                          context,
+                          settingsService,
+                          TemperatureUnit.fahrenheit,
+                          "Fahrenheit (°F)",
+                          "Default - 122°F to 149°F",
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildSwitchOption(
-                        context,
-                        "Show Steep Timer",
-                        "Display a timer at the bottom of the home screen",
-                        settingsService.showSteepTimer,
-                        (val) {
-                          HapticFeedback.mediumImpact();
-                          settingsService.setShowSteepTimer(val);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSwitchOption(
-                        context,
-                        "Green Light Notification",
-                        "Pulse the mug's LED green for 60s when the drink reaches the desired temperature",
-                        settingsService.enableGreenLoop,
-                        (val) {
-                          HapticFeedback.mediumImpact();
-                          settingsService.setEnableGreenLoop(val);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSwitchOption(
-                        context,
-                        "Liquid Visualization",
-                        "Show animated liquid waves in the background",
-                        settingsService.showLiquidAnimation,
-                        (val) {
-                          HapticFeedback.mediumImpact();
-                          settingsService.setShowLiquidAnimation(val);
-                        },
-                      ),
+                        const SizedBox(height: 12),
+                        _buildUnitOption(
+                          context,
+                          settingsService,
+                          TemperatureUnit.celsius,
+                          "Celsius (°C)",
+                          "Metric - 50°C to 65°C",
+                        ),
 
-                      if (kDebugMode) ...[
                         const SizedBox(height: 32),
                         const Text(
-                          "Developer",
+                          "Interface",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -137,22 +94,177 @@ class SettingsScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         _buildSwitchOption(
                           context,
-                          "Show Debug Controls",
-                          "Display mock controls on home screen",
-                          settingsService.showDebugControls,
+                          "Show Steep Timer",
+                          "Display a timer at the bottom of the home screen",
+                          settingsService.showSteepTimer,
                           (val) {
                             HapticFeedback.mediumImpact();
-                            settingsService.setShowDebugControls(val);
+                            settingsService.setShowSteepTimer(val);
                           },
                         ),
+                        const SizedBox(height: 12),
+                        _buildSwitchOption(
+                          context,
+                          "Green Light Notification",
+                          "Pulse the mug's LED green for 60s when the drink reaches the target temperature",
+                          settingsService.enableGreenLoop,
+                          (val) {
+                            HapticFeedback.mediumImpact();
+                            settingsService.setEnableGreenLoop(val);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSwitchOption(
+                          context,
+                          "Liquid Visualization",
+                          "Show animated liquid waves in the background",
+                          settingsService.showLiquidAnimation,
+                          (val) {
+                            HapticFeedback.mediumImpact();
+                            settingsService.setShowLiquidAnimation(val);
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+                        _buildSliderOption(
+                          context,
+                          "Preset Chips",
+                          "Number of preset chips to display on home screen",
+                          settingsService.presetCount,
+                          1,
+                          4,
+                          (val) {
+                            settingsService.setPresetCount(val);
+                          },
+                        ),
+
+                        if (kDebugMode) ...[
+                          const SizedBox(height: 32),
+                          const Text(
+                            "Developer",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white70,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSwitchOption(
+                            context,
+                            "Show Debug Controls",
+                            "Display mock controls on home screen",
+                            settingsService.showDebugControls,
+                            (val) {
+                              HapticFeedback.mediumImpact();
+                              settingsService.setShowDebugControls(val);
+                            },
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSliderOption(
+    BuildContext context,
+    String title,
+    String subtitle,
+    int value,
+    int min,
+    int max,
+    ValueChanged<int> onChanged,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.white60,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.emberOrange.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppTheme.emberOrange.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Text(
+                  "$value",
+                  style: const TextStyle(
+                    color: AppTheme.emberOrange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: AppTheme.emberOrange,
+              inactiveTrackColor: Colors.white24,
+              thumbColor: Colors.white,
+              overlayColor: AppTheme.emberOrange.withValues(alpha: 0.2),
+            ),
+            child: Slider(
+              value: value.toDouble(),
+              min: min.toDouble(),
+              max: max.toDouble(),
+              divisions: max - min,
+              onChanged: (val) {
+                if (val.toInt() != value) {
+                  HapticFeedback.selectionClick();
+                  onChanged(val.toInt());
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

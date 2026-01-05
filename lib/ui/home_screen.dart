@@ -602,8 +602,334 @@ class _HomeScreenState extends State<HomeScreen>
               Expanded(child: _buildPowerButton(service, enabled: isReady)),
             ],
           ),
+          if (settings.presetCount > 0) ...[
+            const SizedBox(height: 16),
+            _buildPresets(service, settings, isHeatingOn),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildPresets(
+    EmberService service,
+    SettingsService settings,
+    bool isHeatingOn,
+  ) {
+    final count = settings.presetCount;
+    final presets = settings.presets.take(count).toList();
+
+    // Use a Grid/Wrap for consistent layout if > 2 items
+    if (count > 2) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final spacing = 12.0;
+          // Calculate item width for 2 columns
+          final itemWidth = (constraints.maxWidth - spacing) / 2;
+
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            alignment: WrapAlignment.center,
+            children: presets.asMap().entries.map((entry) {
+              return SizedBox(
+                width: itemWidth,
+                child: AspectRatio(
+                  aspectRatio: 2.2,
+                  child: _buildPresetChip(
+                    context,
+                    service,
+                    settings,
+                    entry.key,
+                    entry.value,
+                    isHeatingOn,
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      );
+    } else {
+      return Row(
+        children: presets.asMap().entries.map((entry) {
+          final index = entry.key;
+          final preset = entry.value;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: index < presets.length - 1 ? 12.0 : 0.0,
+              ),
+              child: _buildPresetChip(
+                context,
+                service,
+                settings,
+                index,
+                preset,
+                isHeatingOn,
+              ),
+            ),
+          );
+        }).toList(),
+      );
+    }
+  }
+
+  Widget _buildPresetChip(
+    BuildContext context,
+    EmberService service,
+    SettingsService settings,
+    int index,
+    Map<String, dynamic> preset,
+    bool enabled,
+  ) {
+    final name = preset['name'] as String;
+    final icon = preset['icon'] as String? ?? '🌡️';
+    final tempCelsius = (preset['temp'] as num).toDouble();
+    final displayTemp = settings.displayTemp(tempCelsius);
+    final isSelected =
+        enabled &&
+        service.targetTemp != null &&
+        (service.targetTemp! - tempCelsius).abs() < 0.5;
+
+    return Semantics(
+      label:
+          "Preset $name. Icon $icon. Temp ${displayTemp.toStringAsFixed(1)} degrees.",
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick();
+                service.setTargetTemp(tempCelsius);
+              }
+            : null,
+        onLongPress: () =>
+            _showPresetEditDialog(context, settings, index, preset),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppTheme.emberOrange.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected
+                  ? AppTheme.emberOrange
+                  : Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                icon,
+                style: const TextStyle(fontSize: 24), // Larger emoji
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPresetEditDialog(
+    BuildContext context,
+    SettingsService settings,
+    int index,
+    Map<String, dynamic> preset,
+  ) {
+    HapticFeedback.mediumImpact();
+    final TextEditingController nameController = TextEditingController(
+      text: preset['name'],
+    );
+    final TextEditingController iconController = TextEditingController(
+      text: preset['icon'] as String? ?? '🌡️',
+    );
+    // Convert storage Celsius to user display unit
+    double currentCelsius = (preset['temp'] as num).toDouble();
+    double currentDisplay = settings.displayTemp(currentCelsius);
+
+    // Initial check for range clamping in display units
+    double minDisplay = settings.minTemp;
+    double maxDisplay = settings.maxTemp;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E1E1E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+              title: const Text(
+                "Edit Preset",
+                style: TextStyle(color: Colors.white),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 60,
+                        child: TextField(
+                          controller: iconController,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                          ),
+                          maxLength: 1,
+                          decoration: InputDecoration(
+                            counterText: "",
+                            labelText: "Icon",
+                            labelStyle: const TextStyle(color: Colors.white70),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            focusedBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppTheme.emberOrange,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: "Preset Name",
+                            labelStyle: const TextStyle(color: Colors.white70),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            focusedBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppTheme.emberOrange,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Temperature",
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      Text(
+                        "${currentDisplay.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: AppTheme.emberOrange,
+                      thumbColor: Colors.white,
+                    ),
+                    child: Slider(
+                      value: currentDisplay.clamp(minDisplay, maxDisplay),
+                      min: minDisplay,
+                      max: maxDisplay,
+                      divisions:
+                          settings.temperatureUnit == TemperatureUnit.celsius
+                          ? ((maxDisplay - minDisplay) * 2).toInt()
+                          : (maxDisplay - minDisplay).toInt(),
+                      onChanged: (val) {
+                        setState(() {
+                          currentDisplay = val;
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.white54),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    // Convert back to Celsius for storage
+                    double newCelsius = settings.toDeviceTemp(currentDisplay);
+                    settings.updatePreset(
+                      index,
+                      nameController.text,
+                      iconController.text.isNotEmpty
+                          ? iconController.text
+                          : '🌡️',
+                      newCelsius,
+                    );
+                    Navigator.pop(context);
+                  },
+                  child: const Text(
+                    "Save",
+                    style: TextStyle(color: AppTheme.emberOrange),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
