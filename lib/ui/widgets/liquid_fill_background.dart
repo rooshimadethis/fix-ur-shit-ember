@@ -89,7 +89,7 @@ class _WavePainter extends CustomPainter {
     final double width = size.width;
 
     // Cap visual level at 95% so waves are always visible at the top
-    final double visualFillLevel = fillLevel * 0.98;
+    final double visualFillLevel = fillLevel * 0.99;
     final double baseHeight = height * (1 - visualFillLevel);
 
     // Static wave height
@@ -97,7 +97,7 @@ class _WavePainter extends CustomPainter {
 
     // First Wave (Back)
     final backPaint = Paint()
-      ..color = color.withValues(alpha: 0.15)
+      ..color = color.withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
 
     final backPath = Path();
@@ -117,7 +117,7 @@ class _WavePainter extends CustomPainter {
 
     // Second Wave (Front)
     final frontPaint = Paint()
-      ..color = color.withValues(alpha: 0.25)
+      ..color = color.withValues(alpha: 0.10)
       ..style = PaintingStyle.fill;
 
     final frontPath = Path();

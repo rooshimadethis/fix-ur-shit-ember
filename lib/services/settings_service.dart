@@ -12,6 +12,7 @@ class SettingsService extends ChangeNotifier {
   static const String ledColorKey = 'led_color';
   static const String enableGreenLoopKey = 'enable_green_loop';
   static const String showLiquidAnimationKey = 'show_liquid_animation';
+  static const String showDebugControlsKey = 'show_debug_controls';
 
   bool _showSteepTimer = true;
   bool get showSteepTimer => _showSteepTimer;
@@ -34,6 +35,9 @@ class SettingsService extends ChangeNotifier {
 
   bool _showLiquidAnimation = true;
   bool get showLiquidAnimation => _showLiquidAnimation;
+
+  bool _showDebugControls = true;
+  bool get showDebugControls => _showDebugControls;
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -64,6 +68,7 @@ class SettingsService extends ChangeNotifier {
 
     _enableGreenLoop = prefs.getBool(enableGreenLoopKey) ?? true;
     _showLiquidAnimation = prefs.getBool(showLiquidAnimationKey) ?? true;
+    _showDebugControls = prefs.getBool(showDebugControlsKey) ?? true;
 
     final int? colorValue = prefs.getInt(ledColorKey);
     if (colorValue != null) {
@@ -118,6 +123,13 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(showLiquidAnimationKey, value);
+  }
+
+  Future<void> setShowDebugControls(bool value) async {
+    _showDebugControls = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(showDebugControlsKey, value);
   }
 
   Future<void> setTemperatureUnit(TemperatureUnit unit) async {

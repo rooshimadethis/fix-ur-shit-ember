@@ -6,6 +6,7 @@ import '../../services/settings_service.dart';
 import '../../services/notification_service.dart';
 import 'package:flutter/cupertino.dart';
 import '../../theme/app_theme.dart';
+import 'glass_card.dart';
 
 class SteepTimer extends StatefulWidget {
   const SteepTimer({super.key});
@@ -231,31 +232,23 @@ class _SteepTimerState extends State<SteepTimer>
     return AnimatedBuilder(
       animation: _flashController,
       builder: (context, child) {
-        Color containerColor = Colors.white.withValues(alpha: 0.05); // Default
-        if (_isFinished) {
-          containerColor = Color.lerp(
-            Colors.white.withValues(alpha: 0.05),
-            Colors.red.withValues(alpha: 0.5),
-            _flashController.value,
-          )!;
-        }
-
-        return Container(
+        return GlassCard(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          decoration: BoxDecoration(
-            color: containerColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: _isFinished
-                  ? Color.lerp(
-                      Colors.white.withValues(alpha: 0.1),
-                      Colors.redAccent,
-                      _flashController.value,
-                    )!
-                  : Colors.white.withValues(alpha: 0.1),
-            ),
-          ),
-          child: child,
+          color: _isFinished
+              ? Color.lerp(
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.deepOrange.withValues(alpha: 0.6),
+                  _flashController.value,
+                )
+              : null,
+          borderColor: _isFinished
+              ? Color.lerp(
+                  Colors.white.withValues(alpha: 0.15),
+                  Colors.deepOrange.withValues(alpha: 0.8),
+                  _flashController.value,
+                )
+              : null,
+          child: child!,
         );
       },
       child: Column(
@@ -294,7 +287,7 @@ class _SteepTimerState extends State<SteepTimer>
                   const SizedBox(width: 16),
                   _buildControlButton(
                     icon: Icons.stop,
-                    color: Colors.redAccent,
+                    color: Colors.deepOrange,
                     onTap: _stopTimer,
                   ),
                 ],
@@ -314,14 +307,17 @@ class _SteepTimerState extends State<SteepTimer>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44,
-        height: 44,
+        width: 52,
+        height: 52,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
+          color: color.withValues(alpha: 0.55),
           shape: BoxShape.circle,
-          border: Border.all(color: color.withValues(alpha: 0.5)),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.25),
+            width: 1.0,
+          ),
         ),
-        child: Icon(icon, color: color, size: 24),
+        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
   }

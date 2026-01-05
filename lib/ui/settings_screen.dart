@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
@@ -121,6 +122,30 @@ class SettingsScreen extends StatelessWidget {
                           settingsService.setShowLiquidAnimation(val);
                         },
                       ),
+
+                      if (kDebugMode) ...[
+                        const SizedBox(height: 32),
+                        const Text(
+                          "Developer",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white70,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSwitchOption(
+                          context,
+                          "Show Debug Controls",
+                          "Display mock controls on home screen",
+                          settingsService.showDebugControls,
+                          (val) {
+                            HapticFeedback.mediumImpact();
+                            settingsService.setShowDebugControls(val);
+                          },
+                        ),
+                      ],
                     ],
                   ),
                 ),

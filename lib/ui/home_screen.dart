@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import 'settings_screen.dart';
 import 'widgets/steep_timer.dart';
 import 'widgets/liquid_fill_background.dart';
+import 'widgets/glass_card.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
@@ -74,6 +75,40 @@ class _HomeScreenState extends State<HomeScreen>
     final settingsService = Provider.of<SettingsService>(context);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false,
+        title: const Text(
+          "EMBER CONTROL",
+          style: TextStyle(
+            fontSize: 14,
+            letterSpacing: 2,
+            fontWeight: FontWeight.w600,
+            color: Colors.white70,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Colors.white70),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.info_outline, color: Colors.white70),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              _showInfoDialog(context);
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Stack(
         children: [
           // Background Gradient
@@ -94,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen>
                     fillLevel: emberService.normalizedLiquidLevel,
                     baseColor:
                         (emberService.isHeating || emberService.isPerfect)
-                        ? Colors.orange
+                        ? AppTheme.emberOrange
                         : Colors.blue,
                   ),
                 ),
@@ -154,87 +189,55 @@ class _HomeScreenState extends State<HomeScreen>
 
           // Content
           SafeArea(
-            child: SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight:
-                      MediaQuery.of(context).size.height -
-                      MediaQuery.of(context).padding.top -
-                      MediaQuery.of(context).padding.bottom,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: emberService.isConnected
+                            ? MainAxisAlignment.start
+                            : MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Text(
-                            "EMBER CONTROL",
-                            style: TextStyle(
-                              fontSize: 14,
-                              letterSpacing: 2,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white60,
+                          if (emberService.isConnected)
+                            const SizedBox(height: 48),
+
+                          // Status / Connection
+                          if (!emberService.isConnected) ...[
+                            _buildScanButton(emberService),
+                          ] else ...[
+                            _buildTemperatureDisplay(
+                              emberService,
+                              settingsService,
                             ),
-                          ),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.settings_outlined,
-                                  color: Colors.white60,
-                                ),
-                                onPressed: () {
-                                  HapticFeedback.mediumImpact();
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const SettingsScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.info_outline,
-                                  color: Colors.white60,
-                                ),
-                                onPressed: () {
-                                  HapticFeedback.mediumImpact();
-                                  _showInfoDialog(context);
-                                },
-                              ),
+                            const SizedBox(height: 40),
+                            _buildControls(emberService, settingsService),
+                            if (settingsService.showSteepTimer) ...[
+                              const SizedBox(height: 24),
+                              const SteepTimer(),
                             ],
-                          ),
+
+                            // Debug Controls (Only in Mock/Debug Mode & if enabled in Settings)
+                            if (kDebugMode &&
+                                emberService.isMock &&
+                                settingsService.showDebugControls) ...[
+                              const SizedBox(height: 24),
+                              _buildDebugControls(emberService),
+                            ],
+                          ],
+                          const SizedBox(height: 20),
                         ],
                       ),
-                      const SizedBox(height: 20),
-
-                      // Status / Connection
-                      if (!emberService.isConnected) ...[
-                        _buildScanButton(emberService),
-                      ] else ...[
-                        _buildTemperatureDisplay(emberService, settingsService),
-                        const SizedBox(height: 40),
-                        _buildControls(emberService, settingsService),
-                        if (settingsService.showSteepTimer) ...[
-                          const SizedBox(height: 24),
-                          const SteepTimer(),
-                        ],
-
-                        // Debug Controls (Only in Mock/Debug Mode)
-                        if (kDebugMode && emberService.isMock) ...[
-                          const SizedBox(height: 24),
-                          _buildDebugControls(emberService),
-                        ],
-                      ],
-                      const SizedBox(height: 20),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
 
@@ -313,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen>
               "Tap to search for nearby mugs.\nMake sure your mug is powered on and near your device.",
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white54,
+                color: Colors.white70,
                 height: 1.5,
                 fontSize: 14,
               ),
@@ -346,56 +349,85 @@ class _HomeScreenState extends State<HomeScreen>
     final batteryLevel = service.batteryLevel;
     final isCharging = service.isCharging == true;
 
-    return Column(
-      children: [
-        if (service.isEmpty)
-          const Text(
-            "EMPTY",
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2.0,
-            ),
-          ),
-        Text(
-          service.currentTemp != null
-              ? "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.fahrenheit ? 0 : 1)}${settings.unitSymbol}"
-              : "--${settings.unitSymbol}",
-          style: const TextStyle(
-            fontSize: 80,
-            fontWeight: FontWeight.w200,
-            color: Colors.white,
-          ),
-        ),
-        const Text(
-          "Current Temperature",
-          style: TextStyle(color: Colors.white54, fontSize: 16),
-        ),
-        if (batteryLevel != null) ...[
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isCharging ? Icons.battery_charging_full : Icons.battery_std,
-                color: batteryLevel < 20 ? Colors.redAccent : Colors.white70,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "$batteryLevel%",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
+    return Semantics(
+      label: "Current mug temperature information",
+      child: Column(
+        children: [
+          if (service.isEmpty)
+            Semantics(
+              label: "Mug is empty",
+              child: const Text(
+                "EMPTY",
+                style: TextStyle(
                   color: Colors.white70,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2.0,
                 ),
               ),
-            ],
+            ),
+          Semantics(
+            label:
+                "Current Temperature: ${service.currentTemp != null ? displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.fahrenheit ? 0 : 1) : "unknown"} ${settings.unitSymbol}",
+            child: Text(
+              service.currentTemp != null
+                  ? "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.fahrenheit ? 0 : 1)}${settings.unitSymbol}"
+                  : "--${settings.unitSymbol}",
+              style: const TextStyle(
+                fontSize: 80,
+                fontWeight: FontWeight.w300,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    color: Colors.black26,
+                    offset: Offset(0, 2),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
           ),
+          const Text(
+            "Current Temperature",
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (batteryLevel != null) ...[
+            const SizedBox(height: 10),
+            Semantics(
+              label:
+                  "Battery level: $batteryLevel percent${isCharging ? ", charging" : ""}",
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isCharging
+                        ? Icons.battery_charging_full
+                        : Icons.battery_std,
+                    color: batteryLevel < 20
+                        ? Colors.redAccent
+                        : Colors.white70,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "$batteryLevel%",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -421,67 +453,95 @@ class _HomeScreenState extends State<HomeScreen>
     // Check if data is loaded to enable controls
     final bool isReady = service.currentTemp != null;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
+    return GlassCard(
       child: Column(
         children: [
           const Text(
             "Target Temperature",
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           Text(
             "${sliderValue.toStringAsFixed(0)}${settings.unitSymbol}",
             style: TextStyle(
-              color: isHeatingOn
-                  ? Colors.white
-                  : Colors.white38, // Dim text if off
+              color: isHeatingOn ? Colors.white : Colors.white60,
               fontSize: 32,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
+              shadows: isHeatingOn
+                  ? [
+                      const Shadow(
+                        color: Colors.black26,
+                        offset: Offset(0, 1),
+                        blurRadius: 2,
+                      ),
+                    ]
+                  : null,
             ),
           ),
           const SizedBox(height: 10),
-          Slider(
-            value: sliderValue.clamp(settings.minTemp, settings.maxTemp),
-            min: settings.minTemp,
-            max: settings.maxTemp,
-            divisions: (settings.maxTemp - settings.minTemp).toInt(),
-            activeColor: isHeatingOn
-                ? AppTheme.emberOrange
-                : Colors.grey.withValues(alpha: 0.3),
-            inactiveColor: isHeatingOn
-                ? Colors.white12
-                : Colors.white.withValues(alpha: 0.05),
-            thumbColor: isHeatingOn
-                ? AppTheme.emberOrange
-                : Colors.grey.withValues(alpha: 0.5),
-            onChanged: isHeatingOn
-                ? (val) {
-                    if (sliderValue.round() != val.round()) {
-                      HapticFeedback.lightImpact(); // More "mechanical" feel
-                    }
-                    setState(() {
-                      _draggedTemp = val;
-                    });
-                  }
-                : null, // Disable slider when off
-            onChangeEnd: isHeatingOn
-                ? (val) {
-                    HapticFeedback.mediumImpact(); // Solid "set" feel
-                    // Convert display temp back to Celsius for the device
-                    final celsiusTemp = settings.toDeviceTemp(val);
-                    service.setTargetTemp(celsiusTemp);
+          Semantics(
+            label: "Target temperature slider",
+            value: "${sliderValue.toStringAsFixed(0)} degrees",
+            enabled: isHeatingOn,
+            onIncrease: () {
+              if (isHeatingOn && sliderValue < settings.maxTemp) {
+                final newValue = sliderValue + 1;
+                service.setTargetTemp(settings.toDeviceTemp(newValue));
+                HapticFeedback.lightImpact();
+              }
+            },
+            onDecrease: () {
+              if (isHeatingOn && sliderValue > settings.minTemp) {
+                final newValue = sliderValue - 1;
+                service.setTargetTemp(settings.toDeviceTemp(newValue));
+                HapticFeedback.lightImpact();
+              }
+            },
+            child: SliderTheme(
+              data: SliderTheme.of(
+                context,
+              ).copyWith(tickMarkShape: SliderTickMarkShape.noTickMark),
+              child: Slider(
+                value: sliderValue.clamp(settings.minTemp, settings.maxTemp),
+                min: settings.minTemp,
+                max: settings.maxTemp,
+                divisions: (settings.maxTemp - settings.minTemp).toInt(),
+                activeColor: isHeatingOn
+                    ? AppTheme.emberOrange
+                    : Colors.grey.withValues(alpha: 0.3),
+                inactiveColor: isHeatingOn
+                    ? Colors.white12
+                    : Colors.white.withValues(alpha: 0.05),
+                thumbColor: isHeatingOn
+                    ? AppTheme.emberOrange
+                    : Colors.grey.withValues(alpha: 0.5),
+                onChanged: isHeatingOn
+                    ? (val) {
+                        if (sliderValue.round() != val.round()) {
+                          HapticFeedback.lightImpact(); // More "mechanical" feel
+                        }
+                        setState(() {
+                          _draggedTemp = val;
+                        });
+                      }
+                    : null, // Disable slider when off
+                onChangeEnd: isHeatingOn
+                    ? (val) {
+                        HapticFeedback.mediumImpact(); // Solid "set" feel
+                        // Convert display temp back to Celsius for the device
+                        final celsiusTemp = settings.toDeviceTemp(val);
+                        service.setTargetTemp(celsiusTemp);
 
-                    // Clear local drag state after a short delay to allow service to update
-                    setState(() {
-                      _draggedTemp = null;
-                    });
-                  }
-                : null,
+                        // Clear local drag state after a short delay to allow service to update
+                        setState(() {
+                          _draggedTemp = null;
+                        });
+                      }
+                    : null,
+              ),
+            ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -489,13 +549,13 @@ class _HomeScreenState extends State<HomeScreen>
               Text(
                 "${settings.minTemp.toStringAsFixed(0)}${settings.unitSymbol}",
                 style: TextStyle(
-                  color: isHeatingOn ? Colors.white38 : Colors.white12,
+                  color: isHeatingOn ? Colors.white60 : Colors.white38,
                 ),
               ),
               Text(
                 "${settings.maxTemp.toStringAsFixed(0)}${settings.unitSymbol}",
                 style: TextStyle(
-                  color: isHeatingOn ? Colors.white38 : Colors.white12,
+                  color: isHeatingOn ? Colors.white60 : Colors.white38,
                 ),
               ),
             ],
@@ -514,49 +574,50 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildColorButton(EmberService service, bool enabled) {
-    return GestureDetector(
-      onTap: enabled ? () => _showColorPicker(service) : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: service.userLedColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: service.userLedColor.withValues(alpha: 0.4),
-            width: 1.5,
+    return Semantics(
+      label: "Change mug LED color",
+      button: true,
+      enabled: enabled,
+      child: GestureDetector(
+        onTap: enabled ? () => _showColorPicker(service) : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1.0,
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: service.userLedColor.withValues(alpha: 0.1),
-              blurRadius: 10,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: service.userLedColor,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: service.userLedColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              "COLOR",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                letterSpacing: 1.2,
+              const SizedBox(width: 10),
+              const Text(
+                "COLOR",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  letterSpacing: 1.2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -690,6 +751,43 @@ class _HomeScreenState extends State<HomeScreen>
                       paletteType: PaletteType.hsvWithHue,
                       pickerAreaBorderRadius: BorderRadius.circular(20),
                     ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.emberOrange.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(25),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.emberOrange.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Text(
+                              "CONFIRM",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -704,57 +802,53 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildPowerButton(EmberService service, {bool enabled = true}) {
     bool isHeatingOn = (service.targetTemp ?? 0) > 1.0;
 
-    final buttonColor = isHeatingOn ? Colors.redAccent : AppTheme.emberOrange;
+    final buttonColor = isHeatingOn ? Colors.deepOrange : AppTheme.emberOrange;
     final displayColor = enabled ? buttonColor : Colors.grey;
 
-    return GestureDetector(
-      onTap: enabled
-          ? () {
-              HapticFeedback.mediumImpact();
-              service.toggleHeating();
-            }
-          : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: displayColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: displayColor.withValues(alpha: 0.5),
-            width: 1.5,
+    return Semantics(
+      label: isHeatingOn ? "Turn heating off" : "Turn heating on",
+      button: true,
+      enabled: enabled,
+      child: GestureDetector(
+        onTap: enabled
+            ? () {
+                HapticFeedback.mediumImpact();
+                service.toggleHeating();
+              }
+            : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: displayColor.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1.0,
+            ),
           ),
-          boxShadow: enabled
-              ? [
-                  BoxShadow(
-                    color: displayColor.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : [],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isHeatingOn
-                  ? Icons.power_settings_new
-                  : Icons.local_fire_department,
-              color: displayColor,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              isHeatingOn ? "OFF" : "HEAT",
-              style: TextStyle(
-                color: displayColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                letterSpacing: 1.2,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isHeatingOn
+                    ? Icons.power_settings_new
+                    : Icons.local_fire_department,
+                color: Colors.white,
+                size: 20,
               ),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Text(
+                isHeatingOn ? "OFF" : "HEAT",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
