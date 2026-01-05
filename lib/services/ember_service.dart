@@ -37,6 +37,7 @@ class EmberService extends ChangeNotifier {
 
   int? _liquidLevel;
   int? get liquidLevel => _liquidLevel;
+  double get normalizedLiquidLevel => (_liquidLevel ?? 0) / 30.0;
 
   int?
   _liquidState; // 0=Standby, 1=Empty, 2=Filling, 3=Cold, 4=Cooling, 5=Heating, 6=Perfect, 7=Warm
@@ -453,7 +454,7 @@ class EmberService extends ChangeNotifier {
         }
         _lastLiquidState = _liquidState;
 
-        String stateName = _getLiquidStateName(_liquidState!);
+        String stateName = getLiquidStateName(_liquidState!);
         debugPrint("EmberService: Liquid state: $_liquidState ($stateName)");
 
         // Automatic heating control based on liquid state
@@ -519,7 +520,7 @@ class EmberService extends ChangeNotifier {
     }
   }
 
-  String _getLiquidStateName(int state) {
+  String getLiquidStateName(int state) {
     const stateNames = {
       0: 'Standby',
       1: 'Empty',
@@ -536,15 +537,52 @@ class EmberService extends ChangeNotifier {
   bool _isMock = false;
   bool get isMock => _isMock;
 
-  void enableMockMode() {
+  Future<void> enableMockMode() async {
     _isMock = true;
+    final prefs = await SharedPreferences.getInstance();
+
     _currentTemp = 50.0;
-    _targetTemp = 57.0; // Heating by default
-    _lastValidTargetTemp = 57.0;
+    _targetTemp = prefs.getDouble('ember_target_temp') ?? 57.0;
+    _lastValidTargetTemp = _targetTemp! > 0
+        ? _targetTemp
+        : (prefs.getDouble('ember_target_temp') ?? 57.0);
+
+    // Restore Color
+    final colorVal = prefs.getInt('mock_led_color');
+    if (colorVal != null) {
+      _userLedColor = Color(colorVal);
+    }
+
     _batteryLevel = 85;
     _isCharging = false;
     _liquidLevel = 30;
-    _liquidState = 5; // Heating
+
+    // Initial state based on target
+    if (_targetTemp! <= 1.0) {
+      _liquidState = 0;
+    } else {
+      _liquidState = (_targetTemp! > _currentTemp!) ? 5 : 6;
+    }
+
+    notifyListeners();
+  }
+
+  // --- Debug/Mock Overrides ---
+  void setMockLiquidLevel(int level) {
+    if (!_isMock) return;
+    _liquidLevel = level.clamp(0, 30);
+    notifyListeners();
+  }
+
+  void setMockLiquidState(int state) {
+    if (!_isMock) return;
+    _liquidState = state;
+    notifyListeners();
+  }
+
+  void setMockCurrentTemp(double temp) {
+    if (!_isMock) return;
+    _currentTemp = temp;
     notifyListeners();
   }
 
@@ -553,6 +591,15 @@ class EmberService extends ChangeNotifier {
   Future<void> setTargetTemp(double temp) async {
     if (_isMock) {
       _targetTemp = temp;
+
+      // Dynamic Mock State: Update liquid state based on target temp
+      if (temp <= 1.0) {
+        _liquidState = 0; // Standby/Off
+      } else {
+        // Simple logic for mock: if target > current, we are heating
+        _liquidState = (_currentTemp != null && temp > _currentTemp!) ? 5 : 6;
+      }
+
       if (temp > 0) {
         _lastValidTargetTemp = temp;
         // Mock save preference
@@ -621,6 +668,8 @@ class EmberService extends ChangeNotifier {
   Future<void> setLedColor(Color color) async {
     if (_isMock) {
       _userLedColor = color;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('mock_led_color', color.toARGB32());
       notifyListeners();
       return;
     }

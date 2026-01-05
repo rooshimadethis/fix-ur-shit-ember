@@ -11,6 +11,7 @@ class SettingsService extends ChangeNotifier {
   static const String timerTargetTimeKey = 'steep_timer_target_time';
   static const String ledColorKey = 'led_color';
   static const String enableGreenLoopKey = 'enable_green_loop';
+  static const String showLiquidAnimationKey = 'show_liquid_animation';
 
   bool _showSteepTimer = true;
   bool get showSteepTimer => _showSteepTimer;
@@ -30,6 +31,9 @@ class SettingsService extends ChangeNotifier {
 
   bool _enableGreenLoop = true;
   bool get enableGreenLoop => _enableGreenLoop;
+
+  bool _showLiquidAnimation = true;
+  bool get showLiquidAnimation => _showLiquidAnimation;
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -59,6 +63,7 @@ class SettingsService extends ChangeNotifier {
     }
 
     _enableGreenLoop = prefs.getBool(enableGreenLoopKey) ?? true;
+    _showLiquidAnimation = prefs.getBool(showLiquidAnimationKey) ?? true;
 
     final int? colorValue = prefs.getInt(ledColorKey);
     if (colorValue != null) {
@@ -106,6 +111,13 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(enableGreenLoopKey, value);
+  }
+
+  Future<void> setShowLiquidAnimation(bool value) async {
+    _showLiquidAnimation = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(showLiquidAnimationKey, value);
   }
 
   Future<void> setTemperatureUnit(TemperatureUnit unit) async {

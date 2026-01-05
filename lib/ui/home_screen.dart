@@ -11,6 +11,7 @@ import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
 import 'settings_screen.dart';
 import 'widgets/steep_timer.dart';
+import 'widgets/liquid_fill_background.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
@@ -82,6 +83,24 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
 
+          // Liquid Level Wave Visualization
+          if (settingsService.showLiquidAnimation)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 1000),
+                  opacity: emberService.isConnected ? 1.0 : 0.0,
+                  child: LiquidFillBackground(
+                    fillLevel: emberService.normalizedLiquidLevel,
+                    baseColor:
+                        (emberService.isHeating || emberService.isPerfect)
+                        ? Colors.orange
+                        : Colors.blue,
+                  ),
+                ),
+              ),
+            ),
+
           // Heating/Cooling Gradient Overlay
           Positioned(
             bottom: 0,
@@ -135,70 +154,86 @@ class _HomeScreenState extends State<HomeScreen>
 
           // Content
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight:
+                      MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top -
+                      MediaQuery.of(context).padding.bottom,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text(
-                        "EMBER CONTROL",
-                        style: TextStyle(
-                          fontSize: 14,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white60,
-                        ),
-                      ),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.settings_outlined,
+                          const Text(
+                            "EMBER CONTROL",
+                            style: TextStyle(
+                              fontSize: 14,
+                              letterSpacing: 2,
+                              fontWeight: FontWeight.w600,
                               color: Colors.white60,
                             ),
-                            onPressed: () {
-                              HapticFeedback.mediumImpact();
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              );
-                            },
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.info_outline,
-                              color: Colors.white60,
-                            ),
-                            onPressed: () {
-                              HapticFeedback.mediumImpact();
-                              _showInfoDialog(context);
-                            },
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.settings_outlined,
+                                  color: Colors.white60,
+                                ),
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const SettingsScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.info_outline,
+                                  color: Colors.white60,
+                                ),
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  _showInfoDialog(context);
+                                },
+                              ),
+                            ],
                           ),
                         ],
                       ),
+                      const SizedBox(height: 20),
+
+                      // Status / Connection
+                      if (!emberService.isConnected) ...[
+                        _buildScanButton(emberService),
+                      ] else ...[
+                        _buildTemperatureDisplay(emberService, settingsService),
+                        const SizedBox(height: 40),
+                        _buildControls(emberService, settingsService),
+                        if (settingsService.showSteepTimer) ...[
+                          const SizedBox(height: 24),
+                          const SteepTimer(),
+                        ],
+
+                        // Debug Controls (Only in Mock/Debug Mode)
+                        if (kDebugMode && emberService.isMock) ...[
+                          const SizedBox(height: 24),
+                          _buildDebugControls(emberService),
+                        ],
+                      ],
+                      const SizedBox(height: 20),
                     ],
                   ),
-                  const Spacer(),
-
-                  // Status / Connection
-                  if (!emberService.isConnected) ...[
-                    _buildScanButton(emberService),
-                  ] else ...[
-                    _buildTemperatureDisplay(emberService, settingsService),
-                    const SizedBox(height: 40),
-                    _buildControls(emberService, settingsService),
-                    if (settingsService.showSteepTimer) ...[
-                      const SizedBox(height: 24),
-                      const SteepTimer(),
-                    ],
-                  ],
-
-                  const Spacer(),
-                ],
+                ),
               ),
             ),
           ),
@@ -414,6 +449,7 @@ class _HomeScreenState extends State<HomeScreen>
             value: sliderValue.clamp(settings.minTemp, settings.maxTemp),
             min: settings.minTemp,
             max: settings.maxTemp,
+            divisions: (settings.maxTemp - settings.minTemp).toInt(),
             activeColor: isHeatingOn
                 ? AppTheme.emberOrange
                 : Colors.grey.withValues(alpha: 0.3),
@@ -426,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen>
             onChanged: isHeatingOn
                 ? (val) {
                     if (sliderValue.round() != val.round()) {
-                      HapticFeedback.selectionClick();
+                      HapticFeedback.lightImpact(); // More "mechanical" feel
                     }
                     setState(() {
                       _draggedTemp = val;
@@ -435,6 +471,7 @@ class _HomeScreenState extends State<HomeScreen>
                 : null, // Disable slider when off
             onChangeEnd: isHeatingOn
                 ? (val) {
+                    HapticFeedback.mediumImpact(); // Solid "set" feel
                     // Convert display temp back to Celsius for the device
                     final celsiusTemp = settings.toDeviceTemp(val);
                     service.setTargetTemp(celsiusTemp);
@@ -723,12 +760,101 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildDebugControls(EmberService service) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bug_report, color: Colors.redAccent, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                "DEBUG CONTROLS (MOCK ONLY)",
+                style: TextStyle(
+                  color: Colors.red.withValues(alpha: 0.8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  "Fill Level",
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+              Text(
+                "${service.liquidLevel ?? 0}",
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ],
+          ),
+          Slider(
+            value: (service.liquidLevel ?? 0).toDouble(),
+            min: 0,
+            max: 30,
+            activeColor: Colors.redAccent,
+            onChanged: (val) => service.setMockLiquidLevel(val.toInt()),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Liquid State",
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [0, 1, 2, 3, 4, 5, 6, 7].map((state) {
+              final isSelected = service.liquidState == state;
+              return GestureDetector(
+                onTap: () => service.setMockLiquidState(state),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.redAccent
+                        : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    service.getLiquidStateName(state),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showInfoDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: const Color(0xFF2C5364).withValues(alpha: 0.9),
@@ -753,7 +879,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              Expanded(
+              Flexible(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [

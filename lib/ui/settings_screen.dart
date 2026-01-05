@@ -110,6 +110,17 @@ class SettingsScreen extends StatelessWidget {
                           settingsService.setEnableGreenLoop(val);
                         },
                       ),
+                      const SizedBox(height: 12),
+                      _buildSwitchOption(
+                        context,
+                        "Liquid Visualization",
+                        "Show animated liquid waves in the background",
+                        settingsService.showLiquidAnimation,
+                        (val) {
+                          HapticFeedback.mediumImpact();
+                          settingsService.setShowLiquidAnimation(val);
+                        },
+                      ),
                     ],
                   ),
                 ),
