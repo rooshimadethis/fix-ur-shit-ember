@@ -229,23 +229,28 @@ class _SteepTimerState extends State<SteepTimer>
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+
     return AnimatedBuilder(
       animation: _flashController,
       builder: (context, child) {
+        // Use static color when reduce motion is enabled
+        final flashValue = reduceMotion ? 0.5 : _flashController.value;
+
         return GlassCard(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           color: _isFinished
               ? Color.lerp(
                   Colors.white.withValues(alpha: 0.12),
                   Colors.deepOrange.withValues(alpha: 0.6),
-                  _flashController.value,
+                  flashValue,
                 )
               : null,
           borderColor: _isFinished
               ? Color.lerp(
                   Colors.white.withValues(alpha: 0.15),
                   Colors.deepOrange.withValues(alpha: 0.8),
-                  _flashController.value,
+                  flashValue,
                 )
               : null,
           child: child!,
@@ -262,17 +267,28 @@ class _SteepTimerState extends State<SteepTimer>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              GestureDetector(
-                onTap: _editTime,
-                child: Container(
-                  color: Colors.transparent,
-                  child: Text(
-                    _timerString,
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w200,
-                      color: Colors.white,
-                      fontFeatures: [FontFeature.tabularFigures()],
+              Semantics(
+                label:
+                    "Steep timer. ${_isRunning ? 'Running' : 'Stopped'}. Time: $_timerString",
+                button: true,
+                hint: "Tap to edit timer duration",
+                child: GestureDetector(
+                  onTap: _editTime,
+                  child: Container(
+                    color: Colors.transparent,
+                    child: Text(
+                      _timerString,
+                      textScaler: TextScaler.linear(
+                        MediaQuery.textScalerOf(
+                          context,
+                        ).scale(1.0).clamp(1.0, 1.5),
+                      ),
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.w300,
+                        color: Colors.white,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
                 ),
@@ -283,12 +299,16 @@ class _SteepTimerState extends State<SteepTimer>
                     icon: _isRunning ? Icons.pause : Icons.play_arrow,
                     color: AppTheme.emberOrange,
                     onTap: _toggleTimer,
+                    label: _isRunning
+                        ? "Pause steep timer"
+                        : "Start steep timer",
                   ),
                   const SizedBox(width: 16),
                   _buildControlButton(
                     icon: Icons.stop,
                     color: Colors.deepOrange,
                     onTap: _stopTimer,
+                    label: "Stop and reset steep timer",
                   ),
                 ],
               ),
@@ -303,21 +323,26 @@ class _SteepTimerState extends State<SteepTimer>
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    required String label,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.55),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.25),
-            width: 1.0,
+    return Semantics(
+      label: label,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.55),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1.5,
+            ),
           ),
+          child: Icon(icon, color: Colors.white, size: 28),
         ),
-        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
   }
@@ -497,7 +522,12 @@ class _TimePickerDialogState extends State<_TimePickerDialog> {
                 return Center(
                   child: Text(
                     index.toString().padLeft(2, '0'),
-                    style: const TextStyle(color: Colors.white, fontSize: 24),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w300,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
                   ),
                 );
               }),

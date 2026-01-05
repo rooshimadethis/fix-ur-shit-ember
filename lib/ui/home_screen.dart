@@ -73,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final emberService = Provider.of<EmberService>(context);
     final settingsService = Provider.of<SettingsService>(context);
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -90,21 +91,29 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.white70),
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-            },
+          Semantics(
+            label: "Open settings",
+            button: true,
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined, color: Colors.white70),
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white70),
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              _showInfoDialog(context);
-            },
+          Semantics(
+            label: "Show app information and disclaimer",
+            button: true,
+            child: IconButton(
+              icon: const Icon(Icons.info_outline, color: Colors.white70),
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                _showInfoDialog(context);
+              },
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -118,8 +127,8 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
 
-          // Liquid Level Wave Visualization
-          if (settingsService.showLiquidAnimation)
+          // Liquid Level Wave Visualization (disabled with reduce motion)
+          if (settingsService.showLiquidAnimation && !reduceMotion)
             Positioned.fill(
               child: IgnorePointer(
                 child: AnimatedOpacity(
@@ -192,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen>
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const ClampingScrollPhysics(),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
                       minHeight: constraints.maxHeight,
@@ -261,48 +270,54 @@ class _HomeScreenState extends State<HomeScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              service.startScan();
-            },
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.emberOrange.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    spreadRadius: 5,
+          Semantics(
+            label: "Scan for nearby Ember mugs",
+            button: true,
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                service.startScan();
+              },
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(100),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(
-                          Icons.bluetooth_searching,
-                          color: Colors.white,
-                          size: 40,
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          "CONNECT MUG",
-                          style: TextStyle(
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.emberOrange.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(100),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.bluetooth_searching,
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            size: 40,
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 10),
+                          Text(
+                            "CONNECT MUG",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -373,6 +388,9 @@ class _HomeScreenState extends State<HomeScreen>
               service.currentTemp != null
                   ? "${displayTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.fahrenheit ? 0 : 1)}${settings.unitSymbol}"
                   : "--${settings.unitSymbol}",
+              textScaler: TextScaler.linear(
+                MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.5),
+              ),
               style: const TextStyle(
                 fontSize: 80,
                 fontWeight: FontWeight.w300,
@@ -465,6 +483,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           Text(
             "${sliderValue.toStringAsFixed(0)}${settings.unitSymbol}",
+            textScaler: TextScaler.linear(
+              MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.5),
+            ),
             style: TextStyle(
               color: isHeatingOn ? Colors.white : Colors.white60,
               fontSize: 32,
@@ -575,9 +596,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildColorButton(EmberService service, bool enabled) {
     return Semantics(
-      label: "Change mug LED color",
+      label:
+          "Set mug LED color. Current color: ${_colorName(service.userLedColor)}",
       button: true,
       enabled: enabled,
+      hint: enabled ? "Tap to open color picker" : null,
       child: GestureDetector(
         onTap: enabled ? () => _showColorPicker(service) : null,
         child: AnimatedContainer(
@@ -630,7 +653,7 @@ class _HomeScreenState extends State<HomeScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
+        height: MediaQuery.of(context).size.height * 0.80,
         decoration: BoxDecoration(
           color: const Color(0xFF1E1E1E),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -788,7 +811,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -824,7 +847,7 @@ class _HomeScreenState extends State<HomeScreen>
             borderRadius: BorderRadius.circular(25),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.25),
-              width: 1.0,
+              width: 1.5,
             ),
           ),
           child: Row(
@@ -1015,5 +1038,16 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  String _colorName(Color color) {
+    // Check against common colors
+    for (final item in _commonColors) {
+      if (item['color'] == color) {
+        return item['name'] as String;
+      }
+    }
+    // Fallback to RGB description for custom colors
+    return 'Custom color: red ${color.r}, green ${color.g}, blue ${color.b}';
   }
 }

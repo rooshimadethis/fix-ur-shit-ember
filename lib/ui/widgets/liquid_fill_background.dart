@@ -89,7 +89,7 @@ class _WavePainter extends CustomPainter {
     final double width = size.width;
 
     // Cap visual level at 95% so waves are always visible at the top
-    final double visualFillLevel = fillLevel * 0.99;
+    final double visualFillLevel = fillLevel * 1.00;
     final double baseHeight = height * (1 - visualFillLevel);
 
     // Static wave height
