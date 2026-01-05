@@ -296,7 +296,9 @@ class _SteepTimerState extends State<SteepTimer>
               Row(
                 children: [
                   _buildControlButton(
-                    icon: _isRunning ? Icons.pause : Icons.play_arrow,
+                    icon: _isRunning
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
                     color: AppTheme.emberOrange,
                     onTap: _toggleTimer,
                     label: _isRunning
@@ -305,8 +307,10 @@ class _SteepTimerState extends State<SteepTimer>
                   ),
                   const SizedBox(width: 16),
                   _buildControlButton(
-                    icon: Icons.stop,
-                    color: Colors.deepOrange,
+                    icon: Icons.stop_rounded,
+                    color: const Color(
+                      0xFFE64A19,
+                    ), // Bright red-orange to match OFF button
                     onTap: _stopTimer,
                     label: "Stop and reset steep timer",
                   ),

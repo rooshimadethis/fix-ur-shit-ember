@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen>
             label: "Open settings",
             button: true,
             child: IconButton(
-              icon: const Icon(Icons.settings_outlined, color: Colors.white70),
+              icon: const Icon(Icons.settings_rounded, color: Colors.white70),
               onPressed: () {
                 HapticFeedback.mediumImpact();
                 Navigator.of(context).push(
@@ -108,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen>
             label: "Show app information and disclaimer",
             button: true,
             child: IconButton(
-              icon: const Icon(Icons.info_outline, color: Colors.white70),
+              icon: const Icon(Icons.info_rounded, color: Colors.white70),
               onPressed: () {
                 HapticFeedback.mediumImpact();
                 _showInfoDialog(context);
@@ -304,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: const [
                           Icon(
-                            Icons.bluetooth_searching,
+                            Icons.bluetooth_searching_rounded,
                             color: Colors.white,
                             size: 40,
                           ),
@@ -424,8 +424,8 @@ class _HomeScreenState extends State<HomeScreen>
                 children: [
                   Icon(
                     isCharging
-                        ? Icons.battery_charging_full
-                        : Icons.battery_std,
+                        ? Icons.battery_charging_full_rounded
+                        : Icons.battery_std_rounded,
                     color: batteryLevel < 20
                         ? Colors.redAccent
                         : Colors.white70,
@@ -482,7 +482,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           Text(
-            "${sliderValue.toStringAsFixed(0)}${settings.unitSymbol}",
+            "${sliderValue.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
             textScaler: TextScaler.linear(
               MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.5),
             ),
@@ -504,18 +504,27 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 10),
           Semantics(
             label: "Target temperature slider",
-            value: "${sliderValue.toStringAsFixed(0)} degrees",
+            value:
+                "${sliderValue.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)} degrees",
             enabled: isHeatingOn,
             onIncrease: () {
               if (isHeatingOn && sliderValue < settings.maxTemp) {
-                final newValue = sliderValue + 1;
+                final increment =
+                    settings.temperatureUnit == TemperatureUnit.celsius
+                    ? 0.5
+                    : 1.0;
+                final newValue = sliderValue + increment;
                 service.setTargetTemp(settings.toDeviceTemp(newValue));
                 HapticFeedback.lightImpact();
               }
             },
             onDecrease: () {
               if (isHeatingOn && sliderValue > settings.minTemp) {
-                final newValue = sliderValue - 1;
+                final decrement =
+                    settings.temperatureUnit == TemperatureUnit.celsius
+                    ? 0.5
+                    : 1.0;
+                final newValue = sliderValue - decrement;
                 service.setTargetTemp(settings.toDeviceTemp(newValue));
                 HapticFeedback.lightImpact();
               }
@@ -528,7 +537,11 @@ class _HomeScreenState extends State<HomeScreen>
                 value: sliderValue.clamp(settings.minTemp, settings.maxTemp),
                 min: settings.minTemp,
                 max: settings.maxTemp,
-                divisions: (settings.maxTemp - settings.minTemp).toInt(),
+                divisions: settings.temperatureUnit == TemperatureUnit.celsius
+                    ? ((settings.maxTemp - settings.minTemp) * 2)
+                          .toInt() // 0.5° steps for Celsius
+                    : (settings.maxTemp - settings.minTemp)
+                          .toInt(), // 1° steps for Fahrenheit
                 activeColor: isHeatingOn
                     ? AppTheme.emberOrange
                     : Colors.grey.withValues(alpha: 0.3),
@@ -568,13 +581,13 @@ class _HomeScreenState extends State<HomeScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "${settings.minTemp.toStringAsFixed(0)}${settings.unitSymbol}",
+                "${settings.minTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
                 style: TextStyle(
                   color: isHeatingOn ? Colors.white60 : Colors.white38,
                 ),
               ),
               Text(
-                "${settings.maxTemp.toStringAsFixed(0)}${settings.unitSymbol}",
+                "${settings.maxTemp.toStringAsFixed(settings.temperatureUnit == TemperatureUnit.celsius ? 1 : 0)}${settings.unitSymbol}",
                 style: TextStyle(
                   color: isHeatingOn ? Colors.white60 : Colors.white38,
                 ),
@@ -825,7 +838,9 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildPowerButton(EmberService service, {bool enabled = true}) {
     bool isHeatingOn = (service.targetTemp ?? 0) > 1.0;
 
-    final buttonColor = isHeatingOn ? Colors.deepOrange : AppTheme.emberOrange;
+    final buttonColor = isHeatingOn
+        ? const Color(0xFFE64A19) // Bright red-orange for OFF
+        : AppTheme.emberOrange; // Ember orange for HEAT
     final displayColor = enabled ? buttonColor : Colors.grey;
 
     return Semantics(
@@ -855,8 +870,8 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               Icon(
                 isHeatingOn
-                    ? Icons.power_settings_new
-                    : Icons.local_fire_department,
+                    ? Icons.power_settings_new_rounded
+                    : Icons.local_fire_department_rounded,
                 color: Colors.white,
                 size: 20,
               ),
@@ -890,7 +905,11 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           Row(
             children: [
-              const Icon(Icons.bug_report, color: Colors.redAccent, size: 16),
+              const Icon(
+                Icons.bug_report_rounded,
+                color: Colors.redAccent,
+                size: 16,
+              ),
               const SizedBox(width: 8),
               Text(
                 "DEBUG CONTROLS (MOCK ONLY)",
