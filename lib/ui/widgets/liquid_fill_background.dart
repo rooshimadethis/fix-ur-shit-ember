@@ -97,7 +97,7 @@ class _WavePainter extends CustomPainter {
 
     // First Wave (Back)
     final backPaint = Paint()
-      ..color = color.withValues(alpha: 0.1)
+      ..color = color.withValues(alpha: 0.04)
       ..style = PaintingStyle.fill;
 
     final backPath = Path();
@@ -117,7 +117,7 @@ class _WavePainter extends CustomPainter {
 
     // Second Wave (Front)
     final frontPaint = Paint()
-      ..color = color.withValues(alpha: 0.10)
+      ..color = color.withValues(alpha: 0.04)
       ..style = PaintingStyle.fill;
 
     final frontPath = Path();

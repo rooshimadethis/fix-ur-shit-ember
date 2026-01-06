@@ -20,6 +20,12 @@
             "preLaunchTask": "Launch Pixel 9 Pro Fold (2)"
         },
         {
+            "name": "fix_ur_shit_ember (CPH2551)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "e6600b0"
+        },
+        {
             "name": "fix_ur_shit_ember (macOS)",
             "request": "launch",
             "type": "dart",

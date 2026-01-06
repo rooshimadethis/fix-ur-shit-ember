@@ -187,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen>
           // Paper Texture Overlay
           Positioned.fill(
             child: Opacity(
-              opacity: 0.15,
+              opacity: 0.10,
               child: Image.asset(
                 'assets/paper_texture.png',
                 fit: BoxFit.cover,
@@ -620,61 +620,37 @@ class _HomeScreenState extends State<HomeScreen>
   ) {
     final count = settings.presetCount;
     final presets = settings.presets.take(count).toList();
+    if (presets.isEmpty) return const SizedBox.shrink();
 
-    // Use a Grid/Wrap for consistent layout if > 2 items
-    if (count > 2) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final spacing = 12.0;
-          // Calculate item width for 2 columns
-          final itemWidth = (constraints.maxWidth - spacing) / 2;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+        // Calculate item width for 2 columns
+        final itemWidth = (constraints.maxWidth - spacing) / 2;
 
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            alignment: WrapAlignment.center,
-            children: presets.asMap().entries.map((entry) {
-              return SizedBox(
-                width: itemWidth,
-                child: AspectRatio(
-                  aspectRatio: 2.2,
-                  child: _buildPresetChip(
-                    context,
-                    service,
-                    settings,
-                    entry.key,
-                    entry.value,
-                    isHeatingOn,
-                  ),
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          alignment: WrapAlignment.center,
+          children: presets.asMap().entries.map((entry) {
+            return SizedBox(
+              width: itemWidth,
+              child: AspectRatio(
+                aspectRatio: 2.2,
+                child: _buildPresetChip(
+                  context,
+                  service,
+                  settings,
+                  entry.key,
+                  entry.value,
+                  isHeatingOn,
                 ),
-              );
-            }).toList(),
-          );
-        },
-      );
-    } else {
-      return Row(
-        children: presets.asMap().entries.map((entry) {
-          final index = entry.key;
-          final preset = entry.value;
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                right: index < presets.length - 1 ? 12.0 : 0.0,
               ),
-              child: _buildPresetChip(
-                context,
-                service,
-                settings,
-                index,
-                preset,
-                isHeatingOn,
-              ),
-            ),
-          );
-        }).toList(),
-      );
-    }
+            );
+          }).toList(),
+        );
+      },
+    );
   }
 
   Widget _buildPresetChip(
