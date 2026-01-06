@@ -55,12 +55,12 @@ class _LiquidFillBackgroundState extends State<LiquidFillBackground>
     // to match the 1000ms EaseInOut timing of the other UI elements.
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: _previousFillLevel, end: widget.fillLevel),
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 2000),
       curve: Curves.easeInOut,
       builder: (context, animatedFill, _) {
         return TweenAnimationBuilder<Color?>(
           tween: ColorTween(begin: _previousColor, end: widget.baseColor),
-          duration: const Duration(milliseconds: 1000),
+          duration: const Duration(milliseconds: 2000),
           curve: Curves.easeInOut,
           builder: (context, animatedColor, _) {
             return AnimatedBuilder(
@@ -132,7 +132,7 @@ class _WavePainter extends CustomPainter {
 
     // Second Wave (Front)
     final frontPaint = Paint()
-      ..color = color.withValues(alpha: 0.04)
+      ..color = color.withValues(alpha: 0.02)
       ..style = PaintingStyle.fill;
 
     final frontPath = Path();
