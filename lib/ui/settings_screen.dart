@@ -70,7 +70,7 @@ class SettingsScreen extends StatelessWidget {
                           settingsService,
                           TemperatureUnit.fahrenheit,
                           "Fahrenheit (°F)",
-                          "Default - 122°F to 149°F",
+                          "120°F to 145°F",
                         ),
                         const SizedBox(height: 12),
                         _buildUnitOption(
@@ -78,7 +78,7 @@ class SettingsScreen extends StatelessWidget {
                           settingsService,
                           TemperatureUnit.celsius,
                           "Celsius (°C)",
-                          "Metric - 50°C to 65°C",
+                          "49°C to 63°C",
                         ),
 
                         const SizedBox(height: 32),

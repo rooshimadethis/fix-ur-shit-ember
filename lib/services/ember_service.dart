@@ -690,11 +690,14 @@ class EmberService extends ChangeNotifier {
 
     if (_ledChar == null) return;
     try {
+      // Note: Python implementation treats 4th byte as "brightness" not "alpha"
+      // but Flutter's Color uses RGBA, so we treat it as alpha for consistency
+      // This seems to work in practice with the mug hardware
       List<int> bytes = [
         (color.r * 255).round(),
         (color.g * 255).round(),
         (color.b * 255).round(),
-        (color.a * 255).round(),
+        (color.a * 255).round(), // Brightness in Python, alpha in Flutter
       ];
       await _ledChar!.write(bytes);
       // Update our local tracker if this was a user action (timer not active)

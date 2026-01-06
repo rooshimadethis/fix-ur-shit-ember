@@ -221,9 +221,10 @@ class SettingsService extends ChangeNotifier {
   String get unitSymbol =>
       _temperatureUnit == TemperatureUnit.celsius ? '°C' : '°F';
 
-  // Get min/max temps in the current unit
+  // Temperature ranges from official python-ember-mug implementation
+  // https://github.com/sopelj/python-ember-mug/blob/main/ember_mug/consts.py#L83-L86
   double get minTemp =>
-      _temperatureUnit == TemperatureUnit.celsius ? 50.0 : 122.0;
+      _temperatureUnit == TemperatureUnit.celsius ? 49.0 : 120.0;
   double get maxTemp =>
-      _temperatureUnit == TemperatureUnit.celsius ? 65.0 : 149.0;
+      _temperatureUnit == TemperatureUnit.celsius ? 63.0 : 145.0;
 }
