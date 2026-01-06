@@ -35,6 +35,15 @@ class _SteepTimerState extends State<SteepTimer>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = Provider.of<SettingsService>(context, listen: false);
 
+      // Wait for settings to be initialized before restoring timer state
+      if (!settings.isInitialized) {
+        debugPrint('SteepTimer: Settings not initialized yet, using defaults');
+        setState(() {
+          _remainingSeconds = 300; // Default 5 minutes
+        });
+        return;
+      }
+
       // Check for ongoing timer
       if (settings.steepTimerTargetTime != null) {
         final now = DateTime.now();

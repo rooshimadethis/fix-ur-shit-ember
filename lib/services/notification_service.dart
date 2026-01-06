@@ -11,6 +11,11 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
 
+  // Notification ID constants
+  static const int temperatureNotificationId = 88;
+  static const int timerNotificationId = 89;
+  static const int drinkReadyNotificationId = 90;
+
   factory NotificationService() {
     return _instance;
   }
@@ -41,15 +46,17 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     tz.initializeTimeZones();
-    // try
-    final timeZoneInfo = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(
-      tz.getLocation(timeZoneInfo.identifier),
-    ); // Use .id to get 'America/New_York'
-    // } catch (e) {
-    //   debugPrint('Error setting local timezone: $e');
-    //   tz.setLocalLocation(tz.getLocation('America/Detroit')); // Fallback
-    // }
+    try {
+      final timeZoneInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneInfo.identifier));
+      debugPrint(
+        'NotificationService: Timezone set to ${timeZoneInfo.identifier}',
+      );
+    } catch (e) {
+      debugPrint('NotificationService: Error setting local timezone: $e');
+      // Fallback to UTC if timezone detection fails
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
 
     await _requestPermissions();
   }
@@ -125,7 +132,7 @@ class NotificationService {
     }
 
     await flutterLocalNotificationsPlugin.show(
-      88, // Constant ID
+      temperatureNotificationId,
       '$tempString$unitSymbol$statusSuffix',
       title,
       notificationDetails,
@@ -156,7 +163,7 @@ class NotificationService {
 
     try {
       await flutterLocalNotificationsPlugin.zonedSchedule(
-        89,
+        timerNotificationId,
         'Timer Finished',
         'Your steep timer is done!',
         scheduledTime,
@@ -178,7 +185,7 @@ class NotificationService {
   }
 
   Future<void> cancelTimerNotification() async {
-    await flutterLocalNotificationsPlugin.cancel(89);
+    await flutterLocalNotificationsPlugin.cancel(timerNotificationId);
   }
 
   Future<void> _showTimerNotification(String body) async {
@@ -198,7 +205,7 @@ class NotificationService {
     );
 
     await flutterLocalNotificationsPlugin.show(
-      89,
+      timerNotificationId,
       'Timer Finished',
       body,
       notificationDetails,
@@ -234,7 +241,7 @@ class NotificationService {
     );
 
     await flutterLocalNotificationsPlugin.show(
-      90,
+      drinkReadyNotificationId,
       'Drink Ready!',
       'Your beverage has reached ${displayTemp.toStringAsFixed(0)}$unitSymbol',
       notificationDetails,
@@ -242,7 +249,7 @@ class NotificationService {
   }
 
   Future<void> cancel() async {
-    await flutterLocalNotificationsPlugin.cancel(88);
-    await flutterLocalNotificationsPlugin.cancel(89);
+    await flutterLocalNotificationsPlugin.cancel(temperatureNotificationId);
+    await flutterLocalNotificationsPlugin.cancel(timerNotificationId);
   }
 }

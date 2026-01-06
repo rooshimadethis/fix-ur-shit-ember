@@ -15,7 +15,6 @@ class EmberService extends ChangeNotifier {
   BluetoothCharacteristic? _liquidLevelChar;
   BluetoothCharacteristic? _liquidStateChar;
   BluetoothCharacteristic? _batteryChar;
-  // ignore: unused_field
   BluetoothCharacteristic? _pushEventChar;
 
   bool _isScanning = false;
@@ -112,6 +111,13 @@ class EmberService extends ChangeNotifier {
           }
         }
       });
+
+      // Cancel subscription after first match to prevent memory leaks
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (!_isScanning) {
+          _scanSubscription?.cancel();
+        }
+      });
     } catch (e) {
       debugPrint("EmberService: Error scanning: $e");
       _isScanning = false;
@@ -155,10 +161,10 @@ class EmberService extends ChangeNotifier {
       debugPrint("EmberService: Connected!");
       _connectedDevice = device;
 
-      // mtu: null prevents the auto-request of 512 bytes which causes Error 133 on some Android phones/devices
+      // Intentional second connection attempt - helps with flaky BLE devices like Ember mugs
+      // Some devices need a "double tap" to establish a stable connection
       await device.connect(autoConnect: false, mtu: null);
-      debugPrint("EmberService: Connected!");
-      _connectedDevice = device;
+      debugPrint("EmberService: Connection reinforced!");
 
       // Listen to connection state
       _connectionSubscription = device.connectionState.listen((state) {
@@ -374,13 +380,17 @@ class EmberService extends ChangeNotifier {
       List<int> value = await _currentTempChar!.read();
       _currentTemp = _parseTemp(value);
       debugPrint("EmberService: Current temp: $_currentTemp°C");
-      NotificationService().showTemperatureNotification(
-        _currentTemp ?? 0,
-        isHeating: isHeating,
-        isPerfect: isPerfect,
-        isOff: (_targetTemp ?? 0) <= 1.0,
-        batteryPercent: batteryLevel,
-      );
+
+      // Only send notification if we have a valid temperature
+      if (_currentTemp != null) {
+        NotificationService().showTemperatureNotification(
+          _currentTemp!,
+          isHeating: isHeating,
+          isPerfect: isPerfect,
+          isOff: (_targetTemp ?? 0) <= 1.0,
+          batteryPercent: batteryLevel,
+        );
+      }
       notifyListeners();
     } catch (e) {
       debugPrint("EmberService: Error reading current temp: $e");
@@ -645,7 +655,10 @@ class EmberService extends ChangeNotifier {
         );
       }
     } catch (e) {
-      debugPrint("Error setting target temp: $e");
+      debugPrint("EmberService: Error setting target temp: $e");
+      // Revert optimistic update on failure
+      await _readTargetTemp();
+      notifyListeners();
     }
   }
 
@@ -669,6 +682,7 @@ class EmberService extends ChangeNotifier {
     if (_isMock) {
       _userLedColor = color;
       final prefs = await SharedPreferences.getInstance();
+      // Use toARGB32() for consistent color storage
       await prefs.setInt('mock_led_color', color.toARGB32());
       notifyListeners();
       return;
@@ -688,7 +702,7 @@ class EmberService extends ChangeNotifier {
         _userLedColor = color;
       }
     } catch (e) {
-      debugPrint("Error setting LED color: $e");
+      debugPrint("EmberService: Error setting LED color: $e");
     }
   }
 
@@ -709,6 +723,14 @@ class EmberService extends ChangeNotifier {
   }
 
   Future<void> _startPerfectModeLoop() async {
+    // Prevent multiple timers from running simultaneously
+    if (_perfectModeTimer != null && _perfectModeTimer!.isActive) {
+      debugPrint(
+        "EmberService: Perfect Mode Loop already running, skipping duplicate start.",
+      );
+      return;
+    }
+
     // Check if user has enabled this feature
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool(SettingsService.enableGreenLoopKey) ?? true;

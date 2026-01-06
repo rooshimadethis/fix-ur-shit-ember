@@ -66,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _colorDebounce?.cancel();
     super.dispose();
   }
 
@@ -894,11 +895,26 @@ class _HomeScreenState extends State<HomeScreen>
                 TextButton(
                   onPressed: () {
                     HapticFeedback.mediumImpact();
+                    // Validate preset name is not empty
+                    final trimmedName = nameController.text.trim();
+                    if (trimmedName.isEmpty) {
+                      // Show error feedback
+                      HapticFeedback.heavyImpact();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Preset name cannot be empty'),
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                      return;
+                    }
+
                     // Convert back to Celsius for storage
                     double newCelsius = settings.toDeviceTemp(currentDisplay);
                     settings.updatePreset(
                       index,
-                      nameController.text,
+                      trimmedName,
                       iconController.text.isNotEmpty
                           ? iconController.text
                           : '🌡️',
