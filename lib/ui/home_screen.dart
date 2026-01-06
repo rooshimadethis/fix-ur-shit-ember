@@ -723,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen>
                         color: Colors.white70,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
+                        letterSpacing: 0.5,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -828,10 +828,15 @@ class _HomeScreenState extends State<HomeScreen>
                           child: TextField(
                             controller: nameController,
                             style: const TextStyle(color: Colors.white),
+                            maxLength: 12,
                             decoration: InputDecoration(
                               labelText: "Preset Name",
                               labelStyle: const TextStyle(
                                 color: Colors.white70,
+                              ),
+                              counterStyle: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
                               ),
                               enabledBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(
