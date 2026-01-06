@@ -18,8 +18,11 @@ A functional replacement app for the Ember Mug, built with Flutter.
 ### Temperature Control
 *   **Read/Write**: View current liquid temperature and set a target temperature.
 *   **Range**: Supports temperature setting between 50°C - 65°C (122°F - 149°F).
+*   **Half-Degree Precision**: Celsius mode supports half-degree increments (e.g., 50.5°C) for precise temperature control.
+*   **Temperature Presets**: Save and quickly select your favorite temperatures with custom names.
 *   **Heating Toggle**: Manually turn the heater on or off. The app remembers the last used target temperature when turning heating back on.
 *   **Unit Support**: Switch between Celsius and Fahrenheit.
+*   **Haptic Feedback**: Tactile confirmation when adjusting temperature settings.
 
 ### Notifications & Indicators
 *   **Status Notification**: A persistent notification displays the current temperature, battery level, and heating status (e.g., "Heating", "Cooling", "Off") in the system tray.
@@ -30,8 +33,14 @@ A functional replacement app for the Ember Mug, built with Flutter.
 *   **Steep Timer**: A smart timer (default 5 minutes) for tea steeping. 
     *   **Background Support**: Uses system alarms to ensure you get notified even if the app is closed.
     *   **Persistence**: Saves your timer state so it resumes correctly if you restart the app.
-*   **LED Color Picker**: Change the Ember Mug's LED indicator color.
+*   **LED Color Picker**: Customize the Ember Mug's LED indicator color with a full spectrum color picker.
 *   **Liquid Level**: Monitors liquid level to detect if the mug is empty. Automatically disables heating when empty to conserve battery.
+
+### Design & Accessibility
+*   **Glassmorphic UI**: Modern, premium design with frosted glass effects and smooth animations.
+*   **Animated Backgrounds**: Dynamic wave animations create a more engaging experience.
+*   **Accessibility Features**: Enhanced contrast, larger fonts, and support for assistive technologies.
+*   **Reduce Motion Support**: Respects system accessibility settings for users sensitive to motion.
 
 ## Disclaimer
 

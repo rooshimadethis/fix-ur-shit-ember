@@ -18,14 +18,29 @@ class LiquidFillBackground extends StatefulWidget {
 class _LiquidFillBackgroundState extends State<LiquidFillBackground>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  double _previousFillLevel = 0.0;
+  Color _previousColor = Colors.blue;
 
   @override
   void initState() {
     super.initState();
+    _previousFillLevel = widget.fillLevel;
+    _previousColor = widget.baseColor;
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 5),
     )..repeat();
+  }
+
+  @override
+  void didUpdateWidget(LiquidFillBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fillLevel != widget.fillLevel) {
+      _previousFillLevel = oldWidget.fillLevel;
+    }
+    if (oldWidget.baseColor != widget.baseColor) {
+      _previousColor = oldWidget.baseColor;
+    }
   }
 
   @override
@@ -39,12 +54,12 @@ class _LiquidFillBackgroundState extends State<LiquidFillBackground>
     // We use TweenAnimationBuilder to smoothly interpolate values
     // to match the 1000ms EaseInOut timing of the other UI elements.
     return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: widget.fillLevel, end: widget.fillLevel),
+      tween: Tween<double>(begin: _previousFillLevel, end: widget.fillLevel),
       duration: const Duration(milliseconds: 1000),
       curve: Curves.easeInOut,
       builder: (context, animatedFill, _) {
         return TweenAnimationBuilder<Color?>(
-          tween: ColorTween(begin: widget.baseColor, end: widget.baseColor),
+          tween: ColorTween(begin: _previousColor, end: widget.baseColor),
           duration: const Duration(milliseconds: 1000),
           curve: Curves.easeInOut,
           builder: (context, animatedColor, _) {

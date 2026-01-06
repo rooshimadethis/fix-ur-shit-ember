@@ -36,7 +36,22 @@ class EmberService extends ChangeNotifier {
 
   int? _liquidLevel;
   int? get liquidLevel => _liquidLevel;
-  double get normalizedLiquidLevel => (_liquidLevel ?? 0) / 30.0;
+
+  // Hybrid approach: Combine liquid state with level reading
+  // The sensor is optimized for empty detection, not precise fill measurement
+  // When liquid is present, map the 0-30 range to 40-80% for better visualization
+  double get normalizedLiquidLevel {
+    // If empty state, show 0%
+    if (_liquidState == 1) return 0.0;
+
+    // If no liquid level data yet, but not empty, assume reasonably full
+    if (_liquidLevel == null) return 0.6;
+
+    // Map 0-30 sensor range to 40-80% visual range
+    // This keeps the wave animation visible without being too high
+    final rawLevel = (_liquidLevel! / 30.0).clamp(0.0, 1.0);
+    return 0.4 + (rawLevel * 0.4);
+  }
 
   int?
   _liquidState; // 0=Standby, 1=Empty, 2=Filling, 3=Cold, 4=Cooling, 5=Heating, 6=Perfect, 7=Warm
@@ -290,9 +305,20 @@ class EmberService extends ChangeNotifier {
       await _readBatteryLevel();
     }
 
-    // Read LED Colour
+    // Read LED Colour from saved preference (not from device)
+    // This prevents the green cycle color from becoming the "user color"
     if (_ledChar != null) {
-      await _readLedColor();
+      final prefs = await SharedPreferences.getInstance();
+      final savedColorValue = prefs.getInt('user_led_color');
+      if (savedColorValue != null) {
+        _userLedColor = Color(savedColorValue);
+        debugPrint("EmberService: Restored saved LED color: $_userLedColor");
+      } else {
+        // First time connection, read from device
+        await _readLedColor();
+        // Save it for future use
+        await prefs.setInt('user_led_color', _userLedColor.toARGB32());
+      }
     }
 
     // Restore saved target temperature
@@ -703,6 +729,9 @@ class EmberService extends ChangeNotifier {
       // Update our local tracker if this was a user action (timer not active)
       if (_perfectModeTimer == null || !_perfectModeTimer!.isActive) {
         _userLedColor = color;
+        // Save user's preferred color
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('user_led_color', color.toARGB32());
       }
     } catch (e) {
       debugPrint("EmberService: Error setting LED color: $e");
@@ -776,13 +805,18 @@ class EmberService extends ChangeNotifier {
     });
   }
 
-  void _stopPerfectModeLoop() {
+  void _stopPerfectModeLoop() async {
     if (_perfectModeTimer != null && _perfectModeTimer!.isActive) {
       debugPrint(
         "EmberService: Stopping Perfect Mode Green Loop. Restoring user color.",
       );
       _perfectModeTimer?.cancel();
-      // Restore user color
+      // Restore user color from saved preference
+      final prefs = await SharedPreferences.getInstance();
+      final savedColorValue = prefs.getInt('user_led_color');
+      if (savedColorValue != null) {
+        _userLedColor = Color(savedColorValue);
+      }
       setLedColor(_userLedColor);
     }
   }
