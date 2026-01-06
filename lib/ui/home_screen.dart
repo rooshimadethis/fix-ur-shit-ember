@@ -554,7 +554,12 @@ class _HomeScreenState extends State<HomeScreen>
                     : Colors.grey.withValues(alpha: 0.5),
                 onChanged: isHeatingOn
                     ? (val) {
-                        if (sliderValue.round() != val.round()) {
+                        final step =
+                            settings.temperatureUnit == TemperatureUnit.celsius
+                            ? 0.5
+                            : 1.0;
+                        if ((sliderValue / step).round() !=
+                            (val / step).round()) {
                           HapticFeedback.lightImpact(); // More "mechanical" feel
                         }
                         setState(() {
@@ -875,6 +880,15 @@ class _HomeScreenState extends State<HomeScreen>
                             ? ((maxDisplay - minDisplay) * 2).toInt()
                             : (maxDisplay - minDisplay).toInt(),
                         onChanged: (val) {
+                          final step =
+                              settings.temperatureUnit ==
+                                  TemperatureUnit.celsius
+                              ? 0.5
+                              : 1.0;
+                          if ((currentDisplay / step).round() !=
+                              (val / step).round()) {
+                            HapticFeedback.lightImpact();
+                          }
                           setState(() {
                             currentDisplay = val;
                           });
@@ -1270,7 +1284,12 @@ class _HomeScreenState extends State<HomeScreen>
             min: 0,
             max: 30,
             activeColor: Colors.redAccent,
-            onChanged: (val) => service.setMockLiquidLevel(val.toInt()),
+            onChanged: (val) {
+              if (val.toInt() != (service.liquidLevel ?? 0)) {
+                HapticFeedback.selectionClick();
+                service.setMockLiquidLevel(val.toInt());
+              }
+            },
           ),
           const SizedBox(height: 8),
           const Text(
