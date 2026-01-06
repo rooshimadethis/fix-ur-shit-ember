@@ -183,6 +183,13 @@ class SettingsService extends ChangeNotifier {
     }
   }
 
+  Future<void> resetPresets() async {
+    _presets = List.from(defaultPresets);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(presetsKey, jsonEncode(_presets));
+  }
+
   Future<void> setTemperatureUnit(TemperatureUnit unit) async {
     _temperatureUnit = unit;
     notifyListeners();

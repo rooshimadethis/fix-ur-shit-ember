@@ -136,6 +136,9 @@ class SettingsScreen extends StatelessWidget {
                           (val) {
                             settingsService.setPresetCount(val);
                           },
+                          onReset: () {
+                            _showResetPresetsDialog(context, settingsService);
+                          },
                         ),
 
                         if (kDebugMode) ...[
@@ -180,8 +183,9 @@ class SettingsScreen extends StatelessWidget {
     int value,
     int min,
     int max,
-    ValueChanged<int> onChanged,
-  ) {
+    ValueChanged<int> onChanged, {
+    VoidCallback? onReset,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -264,6 +268,32 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
           ),
+          if (onReset != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onReset,
+                icon: const Icon(
+                  Icons.restore_rounded,
+                  size: 16,
+                  color: AppTheme.emberOrange,
+                ),
+                label: const Text(
+                  "Reset to Defaults",
+                  style: TextStyle(
+                    color: AppTheme.emberOrange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -386,6 +416,61 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showResetPresetsDialog(BuildContext context, SettingsService service) {
+    HapticFeedback.mediumImpact();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        title: const Text(
+          "Reset Presets?",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          "This will restore all temperature presets to their original names, icons, and values. This cannot be undone.",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              HapticFeedback.heavyImpact();
+              service.resetPresets();
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Presets reset to defaults'),
+                  duration: Duration(seconds: 2),
+                  backgroundColor: AppTheme.emberOrange,
+                ),
+              );
+            },
+            child: const Text(
+              "Reset",
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
