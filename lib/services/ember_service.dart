@@ -50,7 +50,7 @@ class EmberService extends ChangeNotifier {
     // Map 0-30 sensor range to 40-80% visual range
     // This keeps the wave animation visible without being too high
     final rawLevel = (_liquidLevel! / 30.0).clamp(0.0, 1.0);
-    return 0.4 + (rawLevel * 0.4);
+    return 0.2 + (rawLevel * 0.56);
   }
 
   int?
