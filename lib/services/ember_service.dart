@@ -650,25 +650,31 @@ class EmberService extends ChangeNotifier {
 
     // Safety check removed
 
+    int raw = (temp / 0.01).round();
+    List<int> bytes = [raw & 0xFF, (raw >> 8) & 0xFF];
+
+    // Truly optimistic update: set local state BEFORE the await.
+    // This prevents background notifications (like current temp) from
+    // calling notifyListeners() with the OLD target temperature during the write.
+    _targetTemp = temp;
+    if (temp > 0) {
+      _manualOff = false;
+      _lastValidTargetTemp = temp;
+    }
+    notifyListeners();
+
     try {
       // New target temp means new cycle, reset notification flag
       _hasNotifiedPerfect = false;
       _stopPerfectModeLoop();
 
-      int raw = (temp / 0.01).round();
-      List<int> bytes = [raw & 0xFF, (raw >> 8) & 0xFF];
       await _targetTempChar!.write(bytes);
-      _targetTemp = temp; // Optimistic update
 
-      // Only save non-zero temperatures so we can restore the last used temp when toggling on
+      // Save preference after successful or initiated write
       if (temp > 0) {
-        _manualOff = false; // Reset manual flag since we are heating
-        _lastValidTargetTemp = temp;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setDouble('ember_target_temp', temp);
       }
-
-      notifyListeners();
 
       // Update notification immediately to reflect potential Off state or Heating state change
       if (_currentTemp != null) {
@@ -682,7 +688,7 @@ class EmberService extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint("EmberService: Error setting target temp: $e");
-      // Revert optimistic update on failure
+      // Revert status on failure
       await _readTargetTemp();
       notifyListeners();
     }
@@ -715,6 +721,21 @@ class EmberService extends ChangeNotifier {
     }
 
     if (_ledChar == null) return;
+
+    // Optimistic update: Set local state and notify BEFORE the await.
+    // This prevents the "one update behind" bug where background notifications
+    // (like temp updates) trigger a rebuild while this write is in progress.
+    if (_perfectModeTimer == null || !_perfectModeTimer!.isActive) {
+      _userLedColor = color;
+      // Notify immediately for UI snappiness
+      notifyListeners();
+
+      // Save preference asynchronously
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setInt('user_led_color', color.toARGB32());
+      });
+    }
+
     try {
       // Note: Python implementation treats 4th byte as "brightness" not "alpha"
       // but Flutter's Color uses RGBA, so we treat it as alpha for consistency
@@ -726,15 +747,10 @@ class EmberService extends ChangeNotifier {
         (color.a * 255).round(), // Brightness in Python, alpha in Flutter
       ];
       await _ledChar!.write(bytes);
-      // Update our local tracker if this was a user action (timer not active)
-      if (_perfectModeTimer == null || !_perfectModeTimer!.isActive) {
-        _userLedColor = color;
-        // Save user's preferred color
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('user_led_color', color.toARGB32());
-      }
     } catch (e) {
       debugPrint("EmberService: Error setting LED color: $e");
+      // On failure, we might want to read back the actual color
+      await _readLedColor();
     }
   }
 
@@ -749,6 +765,7 @@ class EmberService extends ChangeNotifier {
         _userLedColor = Color.fromARGB(255, value[0], value[1], value[2]);
         debugPrint("EmberService: Read LED color (RGB): $_userLedColor");
       }
+      notifyListeners();
     } catch (e) {
       debugPrint("EmberService: Error reading LED color: $e");
     }

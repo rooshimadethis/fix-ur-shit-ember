@@ -984,8 +984,8 @@ class _HomeScreenState extends State<HomeScreen>
                   color: service.userLedColor,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    width: 1,
+                    color: Colors.grey.withValues(alpha: 0.9),
+                    width: 1.0,
                   ),
                 ),
               ),
