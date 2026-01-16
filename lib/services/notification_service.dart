@@ -144,18 +144,24 @@ class NotificationService {
   }
 
   Future<void> scheduleTimerFinishedNotification(Duration duration) async {
-    const AndroidNotificationDetails androidNotificationDetails =
+    final vibrationPattern = Int64List.fromList([0, 1000, 500, 1000]);
+    final AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
-          'ember_timer_v2', // CHANGED ID to force update
+          'ember_timer_v3', // Consistent channel ID
           'Steep Timer',
           channelDescription: 'Notifications for the steep timer',
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
           enableVibration: true,
+          vibrationPattern: vibrationPattern,
+          category: AndroidNotificationCategory.alarm,
+          fullScreenIntent: true,
+          groupKey: 'com.fix_ur_shit_ember.TIMER',
+          visibility: NotificationVisibility.public,
         );
 
-    const NotificationDetails notificationDetails = NotificationDetails(
+    final NotificationDetails notificationDetails = NotificationDetails(
       android: androidNotificationDetails,
     );
 
@@ -164,7 +170,7 @@ class NotificationService {
     try {
       await flutterLocalNotificationsPlugin.zonedSchedule(
         timerNotificationId,
-        'Timer Finished',
+        'Timer Finished!',
         'Your steep timer is done!',
         scheduledTime,
         notificationDetails,
@@ -174,7 +180,7 @@ class NotificationService {
       debugPrint('Error scheduling exact notification: $e');
       // Fallback to inexact if permission missing
       await flutterLocalNotificationsPlugin.zonedSchedule(
-        89,
+        timerNotificationId,
         'Timer Finished',
         'Your steep timer is done! (Inexact)',
         scheduledTime,
@@ -184,23 +190,64 @@ class NotificationService {
     }
   }
 
-  Future<void> cancelTimerNotification() async {
+  Future<void> showOngoingTimerNotification(DateTime targetTime) async {
+    final AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+          'ember_timer_ongoing',
+          'Ongoing Timer',
+          channelDescription: 'Shows the remaining time for the steep timer',
+          importance:
+              Importance.low, // Low importance so it doesn't pop up/make noise
+          priority: Priority.low,
+          ongoing: true,
+          autoCancel: false,
+          showWhen: true,
+          when: targetTime.millisecondsSinceEpoch,
+          usesChronometer: true,
+          chronometerCountDown: true,
+          category: AndroidNotificationCategory.progress,
+          groupKey: 'com.fix_ur_shit_ember.TIMER',
+          groupAlertBehavior: GroupAlertBehavior.children,
+        );
+
+    final NotificationDetails notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      timerNotificationId +
+          100, // Different ID to avoid clashing with final notification
+      'Steep Timer Running',
+      null,
+      notificationDetails,
+    );
+  }
+
+  Future<void> cancelTimerNotifications() async {
     await flutterLocalNotificationsPlugin.cancel(timerNotificationId);
+    await flutterLocalNotificationsPlugin.cancel(timerNotificationId + 100);
+  }
+
+  Future<void> cancelTimerNotification() async {
+    await cancelTimerNotifications();
   }
 
   Future<void> _showTimerNotification(String body) async {
-    const AndroidNotificationDetails androidNotificationDetails =
+    final vibrationPattern = Int64List.fromList([0, 1000, 500, 1000]);
+    final AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
-          'ember_timer_v2',
+          'ember_timer_v3', // Use same channel as scheduled
           'Steep Timer',
           channelDescription: 'Notifications for the steep timer',
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
           enableVibration: true,
+          vibrationPattern: vibrationPattern,
+          category: AndroidNotificationCategory.alarm,
         );
 
-    const NotificationDetails notificationDetails = NotificationDetails(
+    final NotificationDetails notificationDetails = NotificationDetails(
       android: androidNotificationDetails,
     );
 
@@ -250,6 +297,6 @@ class NotificationService {
 
   Future<void> cancel() async {
     await flutterLocalNotificationsPlugin.cancel(temperatureNotificationId);
-    await flutterLocalNotificationsPlugin.cancel(timerNotificationId);
+    await cancelTimerNotifications();
   }
 }

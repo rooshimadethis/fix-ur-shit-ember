@@ -55,6 +55,10 @@ class _SteepTimerState extends State<SteepTimer>
             _isRunning = true;
             // Restart local ticker
             _startTicker();
+            // Sync notification
+            NotificationService().showOngoingTimerNotification(
+              settings.steepTimerTargetTime!,
+            );
           });
         } else {
           // Timer finished while invalid/background
@@ -93,6 +97,10 @@ class _SteepTimerState extends State<SteepTimer>
           _remainingSeconds = diff;
           _isRunning = true;
         });
+        // Sync notification
+        NotificationService().showOngoingTimerNotification(
+          settings.steepTimerTargetTime!,
+        );
         // Ensure ticker is running
         if (_timer == null || !_timer!.isActive) {
           _startTicker();
@@ -148,6 +156,7 @@ class _SteepTimerState extends State<SteepTimer>
       final targetTime = DateTime.now().add(duration);
       settings.setSteepTimerTargetTime(targetTime);
       NotificationService().scheduleTimerFinishedNotification(duration);
+      NotificationService().showOngoingTimerNotification(targetTime);
 
       _startTicker();
     }
@@ -174,9 +183,9 @@ class _SteepTimerState extends State<SteepTimer>
       _isFinished = true;
     });
     HapticFeedback.heavyImpact();
-    // Notification is handled by schedule, or if app is open we can show another one or just rely on the schedule?
-    // The scheduled one shows regardless.
-    // We should clear the target time though.
+    // Cancel the ongoing notification and show the finished one immediately
+    NotificationService().cancelTimerNotifications();
+    NotificationService().showTimerFinishedNotification();
     settings.setSteepTimerTargetTime(null);
     _flashController.repeat(reverse: true);
   }
@@ -184,7 +193,7 @@ class _SteepTimerState extends State<SteepTimer>
   void _stopTimer() {
     HapticFeedback.mediumImpact();
     _timer?.cancel();
-    NotificationService().cancelTimerNotification();
+    NotificationService().cancelTimerNotifications();
     _flashController.stop();
     _flashController.reset();
     final settings = Provider.of<SettingsService>(context, listen: false);
@@ -202,7 +211,7 @@ class _SteepTimerState extends State<SteepTimer>
 
     if (_isRunning) {
       _timer?.cancel();
-      NotificationService().cancelTimerNotification();
+      NotificationService().cancelTimerNotifications();
       settings.setSteepTimerTargetTime(null);
       setState(() {
         _isRunning = false;
