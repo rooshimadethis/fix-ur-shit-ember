@@ -23,6 +23,17 @@ class EmberService extends ChangeNotifier {
   bool _manualOff =
       false; // Flag to track if user explicitly turned off heating
 
+  BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
+  BluetoothAdapterState get adapterState => _adapterState;
+  StreamSubscription? _adapterStateSubscription;
+
+  EmberService() {
+    _adapterStateSubscription = FlutterBluePlus.adapterState.listen((state) {
+      _adapterState = state;
+      notifyListeners();
+    });
+  }
+
   bool get isConnected => _connectedDevice != null || _isMock;
 
   double? _currentTemp;
@@ -860,5 +871,14 @@ class EmberService extends ChangeNotifier {
     int raw = value[0] | (value[1] << 8);
     // Python code: float(int.from_bytes(data, 'little')) * 0.01
     return raw * 0.01;
+  }
+
+  @override
+  void dispose() {
+    _adapterStateSubscription?.cancel();
+    _scanSubscription?.cancel();
+    _connectionSubscription?.cancel();
+    _perfectModeTimer?.cancel();
+    super.dispose();
   }
 }

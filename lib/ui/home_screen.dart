@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../services/ember_service.dart';
 import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
@@ -220,6 +221,7 @@ class _HomeScreenState extends State<HomeScreen>
 
                           // Status / Connection
                           if (!emberService.isConnected) ...[
+                            _buildBluetoothWarning(emberService),
                             _buildScanButton(emberService),
                           ] else ...[
                             _buildTemperatureDisplay(
@@ -352,6 +354,80 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildBluetoothWarning(EmberService service) {
+    if (service.adapterState == BluetoothAdapterState.on || service.isMock) {
+      return const SizedBox.shrink();
+    }
+
+    String title = "Bluetooth is Off";
+    String subtitle = "Enable Bluetooth to connect your mug";
+    IconData icon = Icons.bluetooth_disabled_rounded;
+    Color accentColor = Colors.orangeAccent;
+
+    if (service.adapterState == BluetoothAdapterState.unauthorized) {
+      title = "Permissions Needed";
+      subtitle = "Bluetooth permissions are required to scan";
+      icon = Icons.gpp_maybe_rounded;
+    } else if (service.adapterState == BluetoothAdapterState.unavailable) {
+      title = "Bluetooth Unavailable";
+      subtitle = "Your device does not support Bluetooth";
+      icon = Icons.bluetooth_disabled_rounded;
+      accentColor = Colors.redAccent;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 40),
+      child: GlassCard(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(icon, color: accentColor, size: 28),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
